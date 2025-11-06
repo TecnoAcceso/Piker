@@ -1,0 +1,92 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-luxury-black text-luxury-white font-sans antialiased;
+    @apply min-h-screen overflow-x-hidden;
+  }
+
+  html {
+    @apply scroll-smooth;
+  }
+}
+
+@layer components {
+  /* Luxury Button Styles */
+  .btn-primary {
+    @apply bg-gradient-to-r from-luxury-gold to-luxury-darkGold text-luxury-black font-semibold px-6 py-3 rounded-lg;
+    @apply transition-all duration-300 ease-out;
+    @apply hover:shadow-luxury-hover hover:scale-105;
+    @apply active:scale-95;
+  }
+
+  .btn-secondary {
+    @apply border-2 border-luxury-gold text-luxury-gold font-semibold px-6 py-3 rounded-lg;
+    @apply transition-all duration-300 ease-out;
+    @apply hover:bg-luxury-gold hover:text-luxury-black hover:shadow-luxury;
+    @apply active:scale-95;
+  }
+
+  .btn-ghost {
+    @apply text-luxury-white font-medium px-6 py-3 rounded-lg;
+    @apply transition-all duration-300 ease-out;
+    @apply hover:bg-luxury-lightGray;
+    @apply active:scale-95;
+  }
+
+  /* Card Styles */
+  .card-luxury {
+    @apply bg-luxury-darkGray rounded-xl p-6 shadow-luxury;
+    @apply border border-luxury-gray;
+    @apply transition-all duration-300 ease-out;
+    @apply hover:border-luxury-gold hover:shadow-luxury-hover;
+  }
+
+  /* Input Styles */
+  .input-luxury {
+    @apply w-full bg-luxury-gray border border-luxury-lightGray rounded-lg px-4 py-3;
+    @apply text-luxury-white placeholder-gray-500;
+    @apply focus:outline-none focus:border-luxury-gold focus:ring-2 focus:ring-luxury-gold/20;
+    @apply transition-all duration-300;
+  }
+
+  /* Gradient Text */
+  .gradient-text {
+    @apply bg-gradient-to-r from-luxury-gold to-yellow-200 bg-clip-text text-transparent;
+  }
+
+  /* Shimmer Effect */
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      rgba(212, 175, 55, 0) 0%,
+      rgba(212, 175, 55, 0.3) 50%,
+      rgba(212, 175, 55, 0) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite;
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .text-shadow-gold {
+    text-shadow: 0 2px 10px rgba(212, 175, 55, 0.5);
+  }
+}
