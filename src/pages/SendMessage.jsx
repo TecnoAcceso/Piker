@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -12,11 +12,11 @@ import {
   Loader2,
   Phone
 } from 'lucide-react'
-import { Html5Qrcode } from 'html5-qrcode'
 import Layout from '../components/Layout'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import CustomAlert from '../components/CustomAlert'
+import QRScanner from '../components/QRScanner'
 
 const messageTypeInfo = {
   received: {
@@ -47,8 +47,6 @@ export default function SendMessage() {
   const [customMessage, setCustomMessage] = useState('')
   const [sending, setSending] = useState(false)
   const [showQRScanner, setShowQRScanner] = useState(false)
-  const [qrScanner, setQrScanner] = useState(null)
-  const qrCodeRef = useRef(null)
   const [alert, setAlert] = useState({ isOpen: false, title: '', message: '', type: 'info' })
 
   const showAlert = (title, message, type = 'info') => {
@@ -70,15 +68,6 @@ export default function SendMessage() {
   useEffect(() => {
     fetchTemplates()
   }, [type])
-
-  // Cleanup QR scanner
-  useEffect(() => {
-    return () => {
-      if (qrScanner) {
-        qrScanner.stop().catch(() => {})
-      }
-    }
-  }, [qrScanner])
 
   const fetchTemplates = async () => {
     try {
@@ -162,76 +151,62 @@ export default function SendMessage() {
     setPhoneNumbers(phoneNumbers.filter(p => p.id !== id))
   }
 
-  const startQRScanner = async () => {
-    try {
-      setShowQRScanner(true)
-
-      await new Promise(resolve => setTimeout(resolve, 300))
-
-      const scanner = new Html5Qrcode('qr-reader')
-      setQrScanner(scanner)
-
-      await scanner.start(
-        { facingMode: { exact: 'environment' } },
-        {
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
-          aspectRatio: 1.0
-        },
-        async (decodedText) => {
-          // Stop scanner
-          await scanner.stop()
-          setShowQRScanner(false)
-          setQrScanner(null)
-
-          // Process scanned phone number
-          const validation = validatePhoneNumber(decodedText)
-          if (!validation.valid) {
-            showAlert('QR inválido', 'El código QR no contiene un número válido', 'error')
-            return
-          }
-
-          // Check duplicate
-          const isDuplicate = await checkDuplicate(validation.cleaned)
-          if (isDuplicate) {
-            showAlert('Mensaje ya enviado', `El número ${validation.cleaned} ya tiene un mensaje de ${messageTypeInfo[type].label} enviado hoy.`, 'warning')
-            return
-          }
-
-          // Check if already in list
-          if (phoneNumbers.some(p => p.number === validation.cleaned)) {
-            showAlert('Número duplicado', 'Este número ya está en la lista', 'warning')
-            return
-          }
-
-          // Add to list
-          setPhoneNumbers([...phoneNumbers, {
-            id: Date.now(),
-            number: validation.cleaned,
-            status: 'pending'
-          }])
-        },
-        () => {
-          // Scan error (ignore)
-        }
-      )
-    } catch (error) {
-      console.error('Error starting QR scanner:', error)
-      showAlert('Error de cámara', 'No se pudo acceder a la cámara. Por favor, verifica los permisos.', 'error')
-      setShowQRScanner(false)
-    }
+  const startQRScanner = () => {
+    setShowQRScanner(true)
   }
 
-  const stopQRScanner = async () => {
-    if (qrScanner) {
-      try {
-        await qrScanner.stop()
-      } catch (error) {
-        console.error('Error stopping scanner:', error)
-      }
+  const handleQRScanSuccess = async (decodedText) => {
+    if (!decodedText || decodedText.trim() === '') {
+      return
     }
+
+    // Close scanner
     setShowQRScanner(false)
-    setQrScanner(null)
+
+    // Process scanned phone number
+    const validation = validatePhoneNumber(decodedText)
+    if (!validation.valid) {
+      showAlert('QR inválido', 'El código QR no contiene un número válido', 'error')
+      return
+    }
+
+    // Check duplicate
+    const isDuplicate = await checkDuplicate(validation.cleaned)
+    if (isDuplicate) {
+      showAlert('Mensaje ya enviado', `El número ${validation.cleaned} ya tiene un mensaje de ${messageTypeInfo[type].label} enviado hoy.`, 'warning')
+      return
+    }
+
+    // Check if already in list
+    if (phoneNumbers.some(p => p.number === validation.cleaned)) {
+      showAlert('Número duplicado', 'Este número ya está en la lista', 'warning')
+      return
+    }
+
+    // Add to list
+    setPhoneNumbers([...phoneNumbers, {
+      id: Date.now(),
+      number: validation.cleaned,
+      status: 'pending'
+    }])
+
+    showAlert('QR escaneado', `Número ${validation.cleaned} agregado exitosamente`, 'success')
+  }
+
+  const handleQRScanError = (error) => {
+    console.error('Error en escáner QR:', error)
+    let errorMessage = 'Error al acceder a la cámara'
+    
+    if (error.message?.includes('permission') || error.message?.includes('Permission denied')) {
+      errorMessage = 'Permisos de cámara denegados. Por favor, permite el acceso a la cámara en la configuración de tu navegador.'
+    } else if (error.message?.includes('camera') || error.message?.includes('No camera')) {
+      errorMessage = 'No se encontró ninguna cámara disponible.'
+    } else if (error.message?.includes('in use')) {
+      errorMessage = 'La cámara está siendo usada por otra aplicación.'
+    }
+    
+    showAlert('Error de cámara', errorMessage, 'error')
+    setShowQRScanner(false)
   }
 
   const sendMessages = async () => {
@@ -563,14 +538,18 @@ export default function SendMessage() {
                     Escanear QR
                   </h2>
                   <button
-                    onClick={stopQRScanner}
+                    onClick={() => setShowQRScanner(false)}
                     className="text-gray-400 hover:text-luxury-white"
                   >
                     <X className="w-5 h-5" />
                   </button>
                 </div>
 
-                <div id="qr-reader" ref={qrCodeRef} className="w-full rounded-lg overflow-hidden"></div>
+                <QRScanner
+                  onScanSuccess={handleQRScanSuccess}
+                  onError={handleQRScanError}
+                  onClose={() => setShowQRScanner(false)}
+                />
 
                 <p className="text-gray-400 text-xs text-center mt-3">
                   Apunta la cámara al código QR con el número
