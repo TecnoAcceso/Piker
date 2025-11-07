@@ -9,6 +9,7 @@
 -- ============================================
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
+  username TEXT UNIQUE NOT NULL,
   email TEXT UNIQUE NOT NULL,
   full_name TEXT,
   role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin', 'system_admin')),
@@ -50,9 +51,10 @@ CREATE POLICY "Admins can update user profiles"
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, email, full_name, role)
+  INSERT INTO public.profiles (id, username, email, full_name, role)
   VALUES (
     NEW.id,
+    COALESCE(NEW.raw_user_meta_data->>'username', ''),
     NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'full_name', ''),
     'user'
@@ -281,6 +283,20 @@ CREATE TRIGGER licenses_updated_at
 -- 6. HELPER FUNCTIONS
 -- ============================================
 
+-- Function to get email from username (for login)
+CREATE OR REPLACE FUNCTION public.get_email_by_username(p_username TEXT)
+RETURNS TEXT AS $$
+DECLARE
+  v_email TEXT;
+BEGIN
+  SELECT email INTO v_email
+  FROM public.profiles
+  WHERE username = p_username;
+
+  RETURN v_email;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Function to check if a message was sent today
 CREATE OR REPLACE FUNCTION public.check_daily_duplicate(
   p_user_id UUID,
@@ -335,15 +351,26 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- 7. DEFAULT DATA
 -- ============================================
 
--- Insert default templates (optional - users can create their own)
--- This is just an example, you can modify or remove this
+-- IMPORTANT: Create system admin user in Supabase Dashboard
+-- After running this schema, go to Authentication > Users in Supabase Dashboard
+-- and create a user with these credentials:
+--
+-- Email: tecnoacceso2025@gmail.com
+-- Password: admin123
+--
+-- Then run this SQL to update the profile:
+-- UPDATE public.profiles
+-- SET username = 'admin_sistema',
+--     full_name = 'TecnoElectro',
+--     role = 'system_admin'
+-- WHERE email = 'tecnoacceso2025@gmail.com';
 
 -- ============================================
 -- SETUP COMPLETE
 -- ============================================
 -- After running this script:
 -- 1. Go to Authentication > Providers and enable Email provider
--- 2. Configure your email templates if needed
--- 3. Test by creating a user and checking if profile is auto-created
--- 4. Create a system admin user manually:
---    UPDATE public.profiles SET role = 'system_admin' WHERE email = 'your-admin@email.com';
+-- 2. Go to Authentication > Users and create the system admin user with email: tecnoacceso2025@gmail.com and password: admin123
+-- 3. Run the UPDATE query above to set username, full_name, and role = 'system_admin'
+-- 4. Test the login with username: admin_sistema and password: admin123
+-- 5. The profile will be automatically created by the trigger, but you need to update it with the SQL above

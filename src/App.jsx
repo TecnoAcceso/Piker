@@ -4,7 +4,6 @@ import ProtectedRoute from './components/ProtectedRoute'
 
 // Auth Pages
 import Login from './pages/Login'
-import Register from './pages/Register'
 
 // App Pages
 import Dashboard from './pages/Dashboard'
@@ -21,7 +20,6 @@ function App() {
         <Routes>
           {/* Public Routes */}
           <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
 
           {/* Protected Routes */}
           <Route

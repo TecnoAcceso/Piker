@@ -7,10 +7,10 @@ export default function ProtectedRoute({ children, requiredRole = null }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-luxury-black">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 text-luxury-gold animate-spin mx-auto mb-4" />
-          <p className="text-gray-400">Cargando...</p>
+          <Loader2 className="w-12 h-12 text-luxury-brightBlue animate-spin mx-auto mb-4" style={{ filter: 'drop-shadow(0 0 20px rgba(59, 130, 246, 0.6))' }} />
+          <p className="text-gray-400 text-lg">Cargando...</p>
         </div>
       </div>
     )
@@ -20,8 +20,14 @@ export default function ProtectedRoute({ children, requiredRole = null }) {
     return <Navigate to="/login" replace />
   }
 
+  // If no profile found, redirect to login
+  if (!profile) {
+    console.warn('No profile found, redirecting to login')
+    return <Navigate to="/login" replace />
+  }
+
   // Check role if required
-  if (requiredRole && profile) {
+  if (requiredRole) {
     const roleHierarchy = {
       user: 1,
       admin: 2,
