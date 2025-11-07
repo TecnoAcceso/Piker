@@ -16,6 +16,7 @@ import { Html5Qrcode } from 'html5-qrcode'
 import Layout from '../components/Layout'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
+import CustomAlert from '../components/CustomAlert'
 
 const messageTypeInfo = {
   received: {
@@ -48,6 +49,15 @@ export default function SendMessage() {
   const [showQRScanner, setShowQRScanner] = useState(false)
   const [qrScanner, setQrScanner] = useState(null)
   const qrCodeRef = useRef(null)
+  const [alert, setAlert] = useState({ isOpen: false, title: '', message: '', type: 'info' })
+
+  const showAlert = (title, message, type = 'info') => {
+    setAlert({ isOpen: true, title, message, type })
+  }
+
+  const closeAlert = () => {
+    setAlert({ isOpen: false, title: '', message: '', type: 'info' })
+  }
 
   // Validate type
   useEffect(() => {
@@ -123,20 +133,20 @@ export default function SendMessage() {
 
     const validation = validatePhoneNumber(currentPhone)
     if (!validation.valid) {
-      alert(validation.error)
+      showAlert('Número inválido', validation.error, 'error')
       return
     }
 
     // Check if already in temporary list
     if (phoneNumbers.some(p => p.number === validation.cleaned)) {
-      alert('Este número ya está en la lista')
+      showAlert('Número duplicado', 'Este número ya está en la lista', 'warning')
       return
     }
 
     // Check for daily duplicate
     const isDuplicate = await checkDuplicate(validation.cleaned)
     if (isDuplicate) {
-      alert(`⚠️ El número ${validation.cleaned} ya tiene un mensaje de ${messageTypeInfo[type].label} enviado hoy.`)
+      showAlert('Mensaje ya enviado', `El número ${validation.cleaned} ya tiene un mensaje de ${messageTypeInfo[type].label} enviado hoy.`, 'warning')
       return
     }
 
@@ -156,14 +166,17 @@ export default function SendMessage() {
     try {
       setShowQRScanner(true)
 
+      await new Promise(resolve => setTimeout(resolve, 300))
+
       const scanner = new Html5Qrcode('qr-reader')
       setQrScanner(scanner)
 
       await scanner.start(
-        { facingMode: 'environment' },
+        { facingMode: { exact: 'environment' } },
         {
           fps: 10,
-          qrbox: { width: 250, height: 250 }
+          qrbox: { width: 250, height: 250 },
+          aspectRatio: 1.0
         },
         async (decodedText) => {
           // Stop scanner
@@ -174,20 +187,20 @@ export default function SendMessage() {
           // Process scanned phone number
           const validation = validatePhoneNumber(decodedText)
           if (!validation.valid) {
-            alert('El código QR no contiene un número válido')
+            showAlert('QR inválido', 'El código QR no contiene un número válido', 'error')
             return
           }
 
           // Check duplicate
           const isDuplicate = await checkDuplicate(validation.cleaned)
           if (isDuplicate) {
-            alert(`⚠️ El número ${validation.cleaned} ya tiene un mensaje de ${messageTypeInfo[type].label} enviado hoy.`)
+            showAlert('Mensaje ya enviado', `El número ${validation.cleaned} ya tiene un mensaje de ${messageTypeInfo[type].label} enviado hoy.`, 'warning')
             return
           }
 
           // Check if already in list
           if (phoneNumbers.some(p => p.number === validation.cleaned)) {
-            alert('Este número ya está en la lista')
+            showAlert('Número duplicado', 'Este número ya está en la lista', 'warning')
             return
           }
 
@@ -198,13 +211,13 @@ export default function SendMessage() {
             status: 'pending'
           }])
         },
-        (errorMessage) => {
+        () => {
           // Scan error (ignore)
         }
       )
     } catch (error) {
       console.error('Error starting QR scanner:', error)
-      alert('No se pudo acceder a la cámara. Por favor, verifica los permisos.')
+      showAlert('Error de cámara', 'No se pudo acceder a la cámara. Por favor, verifica los permisos.', 'error')
       setShowQRScanner(false)
     }
   }
@@ -223,12 +236,12 @@ export default function SendMessage() {
 
   const sendMessages = async () => {
     if (phoneNumbers.length === 0) {
-      alert('No hay números en la lista')
+      showAlert('Lista vacía', 'No hay números en la lista', 'warning')
       return
     }
 
     if (!customMessage.trim()) {
-      alert('El mensaje no puede estar vacío')
+      showAlert('Mensaje vacío', 'El mensaje no puede estar vacío', 'warning')
       return
     }
 
@@ -293,7 +306,7 @@ export default function SendMessage() {
 
       // Show success message
       const successCount = results.filter(r => r.success).length
-      alert(`✅ ${successCount} de ${phoneNumbers.length} mensajes enviados exitosamente`)
+      showAlert('Mensajes enviados', `${successCount} de ${phoneNumbers.length} mensajes enviados exitosamente`, 'success')
 
       // Clear list after a delay
       setTimeout(() => {
@@ -302,7 +315,7 @@ export default function SendMessage() {
 
     } catch (error) {
       console.error('Error sending messages:', error)
-      alert('Error al enviar los mensajes')
+      showAlert('Error', 'Error al enviar los mensajes', 'error')
     } finally {
       setSending(false)
     }
@@ -313,57 +326,57 @@ export default function SendMessage() {
 
   return (
     <Layout>
-      <div className="space-y-6">
+      <div className="space-y-4">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-display font-bold text-luxury-white mb-2">
+          <h1 className="text-xl font-display font-bold text-luxury-white mb-1">
             {typeInfo.label}
           </h1>
-          <p className="text-gray-400">
+          <p className="text-sm text-gray-400">
             {typeInfo.description}
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Left Column - Input & List */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-4">
             {/* Add Phone Card */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="card-luxury"
+              className="card-luxury p-4"
             >
-              <h2 className="text-xl font-display font-semibold text-luxury-white mb-4">
+              <h2 className="text-base font-display font-semibold text-luxury-white mb-3">
                 Agregar Números
               </h2>
 
-              <div className="space-y-4">
-                <div className="flex space-x-3">
+              <div className="space-y-3">
+                <div className="flex space-x-2">
                   <div className="relative flex-1">
-                    <Phone className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 w-5 h-5" />
+                    <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-4 h-4" />
                     <input
-                      type="text"
+                      type="tel"
                       value={currentPhone}
                       onChange={(e) => setCurrentPhone(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && handleAddPhone()}
-                      className="input-luxury pl-12"
+                      onKeyDown={(e) => e.key === 'Enter' && handleAddPhone()}
+                      className="w-full pl-10 pr-3 py-2 bg-luxury-gray border border-luxury-lightGray rounded-lg text-luxury-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-luxury-gold/50 text-sm"
                       placeholder="+1234567890"
                     />
                   </div>
                   <button
                     onClick={handleAddPhone}
-                    className="btn-primary flex items-center space-x-2"
+                    className="btn-primary flex items-center space-x-1 px-3 py-2 text-sm"
                   >
-                    <Plus className="w-5 h-5" />
+                    <Plus className="w-4 h-4" />
                     <span>Agregar</span>
                   </button>
                 </div>
 
                 <button
                   onClick={startQRScanner}
-                  className="btn-secondary w-full flex items-center justify-center space-x-2"
+                  className="btn-secondary w-full flex items-center justify-center space-x-2 py-2 text-sm"
                 >
-                  <QrCode className="w-5 h-5" />
+                  <QrCode className="w-4 h-4" />
                   <span>Escanear Código QR</span>
                 </button>
               </div>
@@ -374,29 +387,29 @@ export default function SendMessage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="card-luxury"
+              className="card-luxury p-4"
             >
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-display font-semibold text-luxury-white">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-base font-display font-semibold text-luxury-white">
                   Lista de Envío ({phoneNumbers.length})
                 </h2>
                 {phoneNumbers.length > 0 && (
                   <button
                     onClick={() => setPhoneNumbers([])}
-                    className="text-red-400 hover:text-red-300 text-sm flex items-center space-x-1"
+                    className="text-red-400 hover:text-red-300 text-xs flex items-center space-x-1"
                   >
-                    <Trash2 className="w-4 h-4" />
-                    <span>Limpiar Todo</span>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Limpiar</span>
                   </button>
                 )}
               </div>
 
               {phoneNumbers.length === 0 ? (
-                <div className="text-center py-8 text-gray-400">
+                <div className="text-center py-6 text-gray-400 text-sm">
                   No hay números en la lista
                 </div>
               ) : (
-                <div className="space-y-2 max-h-96 overflow-y-auto">
+                <div className="space-y-2 max-h-80 overflow-y-auto">
                   <AnimatePresence>
                     {phoneNumbers.map((phone) => (
                       <motion.div
@@ -404,18 +417,18 @@ export default function SendMessage() {
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: 20 }}
-                        className="flex items-center justify-between bg-luxury-gray rounded-lg p-4 border border-luxury-lightGray"
+                        className="flex items-center justify-between bg-luxury-gray rounded-lg p-3 border border-luxury-lightGray"
                       >
-                        <div className="flex items-center space-x-3">
-                          <Phone className="w-5 h-5 text-gray-400" />
-                          <span className="text-luxury-white font-medium">
+                        <div className="flex items-center space-x-2">
+                          <Phone className="w-4 h-4 text-gray-400" />
+                          <span className="text-luxury-white font-medium text-sm">
                             {phone.number}
                           </span>
                           {phone.status === 'sent' && (
-                            <CheckCircle className="w-5 h-5 text-green-400" />
+                            <CheckCircle className="w-4 h-4 text-green-400" />
                           )}
                           {phone.status === 'failed' && (
-                            <AlertTriangle className="w-5 h-5 text-red-400" />
+                            <AlertTriangle className="w-4 h-4 text-red-400" />
                           )}
                         </div>
                         {phone.status === 'pending' && (
@@ -423,7 +436,7 @@ export default function SendMessage() {
                             onClick={() => handleRemovePhone(phone.id)}
                             className="text-red-400 hover:text-red-300"
                           >
-                            <Trash2 className="w-5 h-5" />
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         )}
                       </motion.div>
@@ -436,17 +449,17 @@ export default function SendMessage() {
                 <button
                   onClick={sendMessages}
                   disabled={sending}
-                  className="btn-primary w-full mt-6 flex items-center justify-center space-x-2"
+                  className="btn-primary w-full mt-4 flex items-center justify-center space-x-2 py-2 text-sm"
                 >
                   {sending ? (
                     <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <Loader2 className="w-4 h-4 animate-spin" />
                       <span>Enviando...</span>
                     </>
                   ) : (
                     <>
-                      <Send className="w-5 h-5" />
-                      <span>Enviar Lote de Mensajes</span>
+                      <Send className="w-4 h-4" />
+                      <span>Enviar Mensajes</span>
                     </>
                   )}
                 </button>
@@ -455,22 +468,22 @@ export default function SendMessage() {
           </div>
 
           {/* Right Column - Message Template */}
-          <div className="space-y-6">
+          <div className="space-y-4">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="card-luxury"
+              className="card-luxury p-4"
             >
-              <h2 className="text-xl font-display font-semibold text-luxury-white mb-4">
-                Plantilla de Mensaje
+              <h2 className="text-base font-display font-semibold text-luxury-white mb-3">
+                Mensaje
               </h2>
 
               {templates.length > 0 ? (
                 <>
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Seleccionar Plantilla
+                  <div className="mb-3">
+                    <label className="block text-xs font-medium text-gray-300 mb-1.5">
+                      Plantilla
                     </label>
                     <select
                       value={selectedTemplate?.id || ''}
@@ -479,7 +492,7 @@ export default function SendMessage() {
                         setSelectedTemplate(template)
                         setCustomMessage(template?.template_content || '')
                       }}
-                      className="input-luxury"
+                      className="w-full px-3 py-2 bg-luxury-gray border border-luxury-lightGray rounded-lg text-luxury-white focus:outline-none focus:ring-2 focus:ring-luxury-gold/50 text-sm"
                     >
                       {templates.map(template => (
                         <option key={template.id} value={template.id}>
@@ -490,25 +503,25 @@ export default function SendMessage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Mensaje
+                    <label className="block text-xs font-medium text-gray-300 mb-1.5">
+                      Contenido
                     </label>
                     <textarea
                       value={customMessage}
                       onChange={(e) => setCustomMessage(e.target.value)}
-                      className="input-luxury min-h-32"
-                      rows={8}
+                      className="w-full px-3 py-2 bg-luxury-gray border border-luxury-lightGray rounded-lg text-luxury-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-luxury-gold/50 text-sm min-h-32"
+                      rows={6}
                     />
                   </div>
                 </>
               ) : (
-                <div className="text-center py-8">
-                  <p className="text-gray-400 mb-4">
-                    No tienes plantillas para este tipo de mensaje
+                <div className="text-center py-6">
+                  <p className="text-gray-400 mb-3 text-sm">
+                    No tienes plantillas para este tipo
                   </p>
                   <button
                     onClick={() => navigate('/templates')}
-                    className="btn-primary"
+                    className="btn-primary text-sm py-2"
                   >
                     Crear Plantilla
                   </button>
@@ -518,6 +531,15 @@ export default function SendMessage() {
           </div>
         </div>
       </div>
+
+      {/* Custom Alert */}
+      <CustomAlert
+        isOpen={alert.isOpen}
+        onClose={closeAlert}
+        title={alert.title}
+        message={alert.message}
+        type={alert.type}
+      />
 
       {/* QR Scanner Modal */}
       <AnimatePresence>
@@ -534,24 +556,24 @@ export default function SendMessage() {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-luxury-darkGray rounded-xl border border-luxury-gray max-w-lg w-full p-6"
+                className="bg-luxury-darkGray rounded-xl border border-luxury-gray max-w-lg w-full p-4"
               >
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-2xl font-display font-bold text-luxury-white">
-                    Escanear Código QR
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-lg font-display font-bold text-luxury-white">
+                    Escanear QR
                   </h2>
                   <button
                     onClick={stopQRScanner}
                     className="text-gray-400 hover:text-luxury-white"
                   >
-                    <X className="w-6 h-6" />
+                    <X className="w-5 h-5" />
                   </button>
                 </div>
 
                 <div id="qr-reader" ref={qrCodeRef} className="w-full rounded-lg overflow-hidden"></div>
 
-                <p className="text-gray-400 text-sm text-center mt-4">
-                  Apunta la cámara al código QR que contiene el número de teléfono
+                <p className="text-gray-400 text-xs text-center mt-3">
+                  Apunta la cámara al código QR con el número
                 </p>
               </motion.div>
             </div>

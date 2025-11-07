@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import * as bcrypt from 'bcryptjs'
 
 const AuthContext = createContext({})
 
@@ -17,110 +18,99 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    let mounted = true
+    // Cargar usuario desde localStorage
+    const loadUser = () => {
+      try {
+        const savedUser = localStorage.getItem('piker_user')
+        const savedProfile = localStorage.getItem('piker_profile')
 
-    // Check active sessions and sets the user
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!mounted) return
-
-      setUser(session?.user ?? null)
-      if (session?.user) {
-        fetchProfile(session.user.id)
-      } else {
+        if (savedUser && savedProfile) {
+          setUser(JSON.parse(savedUser))
+          setProfile(JSON.parse(savedProfile))
+        }
+      } catch (error) {
+        console.error('Error loading user:', error)
+        localStorage.removeItem('piker_user')
+        localStorage.removeItem('piker_profile')
+      } finally {
         setLoading(false)
       }
-    }).catch((error) => {
-      console.error('Error getting session:', error)
-      if (mounted) setLoading(false)
-    })
-
-    // Listen for changes on auth state
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (!mounted) return
-
-      setUser(session?.user ?? null)
-      if (session?.user) {
-        await fetchProfile(session.user.id)
-      } else {
-        setProfile(null)
-        setLoading(false)
-      }
-    })
-
-    return () => {
-      mounted = false
-      subscription.unsubscribe()
     }
+
+    loadUser()
   }, [])
 
   const fetchProfile = async (userId) => {
-    console.log('Fetching profile for user:', userId)
-
     try {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .maybeSingle()
+        .single()
 
-      if (error) {
-        console.error('Error fetching profile:', error)
-        setProfile(null)
-      } else if (data) {
-        console.log('Profile loaded:', data)
-        setProfile(data)
-      } else {
-        console.warn('No profile found for user')
-        setProfile(null)
-      }
+      if (error) throw error
+      setProfile(data)
     } catch (error) {
-      console.error('Exception fetching profile:', error)
-      setProfile(null)
+      console.error('Error fetching profile:', error)
     } finally {
-      console.log('Setting loading to false')
       setLoading(false)
     }
   }
 
   const signIn = async (username, password) => {
     try {
-      console.log('Attempting to sign in with username:', username)
+      console.log('🔍 Login con username:', username)
 
-      // First, get the email from username
-      const { data: emailData, error: emailError } = await supabase
-        .rpc('get_email_by_username', { p_username: username })
+      // Buscar usuario por username
+      const { data: users, error: searchError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('username', username)
+        .limit(1)
 
-      if (emailError) {
-        console.error('Error getting email:', emailError)
+      console.log('📊 Búsqueda:', { users, searchError })
+
+      if (searchError) {
+        throw new Error('Error al buscar usuario')
+      }
+
+      if (!users || users.length === 0) {
         throw new Error('Usuario no encontrado')
       }
 
-      if (!emailData) {
-        throw new Error('Usuario no encontrado')
+      const userProfile = users[0]
+      console.log('✅ Usuario encontrado:', userProfile.username)
+
+      // Verificar contraseña con bcrypt
+      console.log('🔐 Verificando contraseña...')
+      const passwordValid = await bcrypt.compare(password, userProfile.password_hash)
+
+      console.log('📊 Password válido:', passwordValid)
+
+      if (!passwordValid) {
+        throw new Error('Contraseña incorrecta')
       }
 
-      console.log('Found email for username:', emailData)
+      // Establecer usuario y perfil directamente
+      console.log('✅ Autenticación exitosa!')
+      const userData = { id: userProfile.id, email: userProfile.email }
 
-      // Then sign in with the email
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: emailData,
-        password,
-      })
+      setUser(userData)
+      setProfile(userProfile)
+      setLoading(false)
 
-      if (error) {
-        console.error('Sign in error:', error)
-        throw error
-      }
+      // Guardar en localStorage
+      localStorage.setItem('piker_user', JSON.stringify(userData))
+      localStorage.setItem('piker_profile', JSON.stringify(userProfile))
 
-      console.log('Sign in successful')
-      return { data, error: null }
+      return { data: { user: userProfile }, error: null }
     } catch (error) {
-      console.error('Sign in exception:', error)
+      console.error('❌ Error:', error)
       return { data: null, error }
     }
   }
 
-  const signUp = async (email, password, fullName, username) => {
+  const signUp = async (email, password, fullName) => {
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -128,7 +118,6 @@ export const AuthProvider = ({ children }) => {
         options: {
           data: {
             full_name: fullName,
-            username: username,
           }
         }
       })
@@ -141,10 +130,10 @@ export const AuthProvider = ({ children }) => {
 
   const signOut = async () => {
     try {
-      const { error } = await supabase.auth.signOut()
-      if (error) throw error
       setUser(null)
       setProfile(null)
+      localStorage.removeItem('piker_user')
+      localStorage.removeItem('piker_profile')
     } catch (error) {
       console.error('Error signing out:', error)
     }
@@ -161,9 +150,6 @@ export const AuthProvider = ({ children }) => {
 
     return roles[requiredRole]?.includes(profile.role) ?? false
   }
-
-  // Log current state
-  console.log('Auth state:', { user: !!user, profile: !!profile, loading })
 
   const value = {
     user,

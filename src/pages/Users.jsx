@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Users as UsersIcon, Edit2, Trash2, Save, X, Search, Shield } from 'lucide-react'
+import { Users as UsersIcon, Edit2, Trash2, Save, X, Search, Shield, Plus } from 'lucide-react'
 import Layout from '../components/Layout'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import * as bcrypt from 'bcryptjs'
+import CustomAlert from '../components/CustomAlert'
 
 const roles = [
   { value: 'user', label: 'Usuario', description: 'Acceso básico' },
@@ -20,10 +22,21 @@ export default function Users() {
   const [showModal, setShowModal] = useState(false)
   const [editingUser, setEditingUser] = useState(null)
   const [formData, setFormData] = useState({
+    username: '',
     full_name: '',
     email: '',
+    password: '',
     role: 'user'
   })
+  const [alert, setAlert] = useState({ isOpen: false, title: '', message: '', type: 'info' })
+
+  const showAlert = (title, message, type = 'info') => {
+    setAlert({ isOpen: true, title, message, type })
+  }
+
+  const closeAlert = () => {
+    setAlert({ isOpen: false, title: '', message: '', type: 'info' })
+  }
 
   useEffect(() => {
     fetchUsers()
@@ -62,29 +75,78 @@ export default function Users() {
     setFilteredUsers(filtered)
   }
 
+  // Función simple para generar UUID
+  const generateUUID = () => {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0
+      const v = c === 'x' ? r : (r & 0x3 | 0x8)
+      return v.toString(16)
+    })
+  }
+
   const handleSave = async () => {
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          full_name: formData.full_name,
-          role: formData.role
-        })
-        .eq('id', editingUser.id)
+      if (editingUser) {
+        // Actualizar usuario existente
+        const { error } = await supabase
+          .from('profiles')
+          .update({
+            full_name: formData.full_name,
+            role: formData.role
+          })
+          .eq('id', editingUser.id)
 
-      if (error) throw error
+        if (error) throw error
+        showAlert('Usuario actualizado', 'El usuario se actualizó exitosamente', 'success')
+      } else {
+        // Crear nuevo usuario
+        if (!formData.username || !formData.password || !formData.email || !formData.full_name) {
+          showAlert('Campos incompletos', 'Todos los campos son obligatorios', 'warning')
+          return
+        }
+
+        // Generar UUID manualmente (método simple y directo)
+        const newUserId = generateUUID()
+
+        // Hash de la contraseña
+        const password_hash = await bcrypt.hash(formData.password, 10)
+
+        // Insertar con el ID generado manualmente
+        const { error } = await supabase
+          .from('profiles')
+          .insert({
+            id: newUserId,
+            username: formData.username,
+            email: formData.email,
+            password_hash: password_hash,
+            full_name: formData.full_name,
+            role: formData.role
+          })
+
+        if (error) {
+          if (error.message.includes('username')) {
+            showAlert('Usuario duplicado', 'El nombre de usuario ya existe', 'error')
+          } else if (error.message.includes('email')) {
+            showAlert('Email duplicado', 'El email ya está registrado', 'error')
+          } else {
+            throw error
+          }
+          return
+        }
+        showAlert('Usuario creado', 'El usuario se creó exitosamente', 'success')
+      }
 
       fetchUsers()
       handleCloseModal()
     } catch (error) {
-      console.error('Error updating user:', error)
-      alert('Error al actualizar el usuario')
+      console.error('Error saving user:', error)
+      showAlert('Error', 'Error al guardar el usuario: ' + error.message, 'error')
     }
   }
 
   const handleDelete = async (id) => {
     if (id === currentUser.id) {
-      alert('No puedes eliminar tu propia cuenta')
+      showAlert('Acción no permitida', 'No puedes eliminar tu propia cuenta', 'warning')
       return
     }
 
@@ -111,9 +173,23 @@ export default function Users() {
   const handleEdit = (user) => {
     setEditingUser(user)
     setFormData({
+      username: user.username || '',
       full_name: user.full_name || '',
       email: user.email || '',
+      password: '',
       role: user.role
+    })
+    setShowModal(true)
+  }
+
+  const handleCreate = () => {
+    setEditingUser(null)
+    setFormData({
+      username: '',
+      full_name: '',
+      email: '',
+      password: '',
+      role: 'user'
     })
     setShowModal(true)
   }
@@ -122,8 +198,10 @@ export default function Users() {
     setShowModal(false)
     setEditingUser(null)
     setFormData({
+      username: '',
       full_name: '',
       email: '',
+      password: '',
       role: 'user'
     })
   }
@@ -147,140 +225,152 @@ export default function Users() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-display font-bold text-luxury-white mb-2 flex items-center space-x-3">
-              <UsersIcon className="w-8 h-8 text-luxury-gold" />
-              <span>Gestión de Usuarios</span>
+            <h1 className="text-xl font-semibold text-luxury-white mb-1">
+              Gestión de Usuarios
             </h1>
-            <p className="text-gray-400">
+            <p className="text-sm text-gray-400">
               Administra los usuarios y sus permisos
             </p>
           </div>
+          <button
+            onClick={handleCreate}
+            className="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300"
+            style={{
+              background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+              color: 'white',
+              border: '1px solid rgba(59, 130, 246, 0.3)'
+            }}
+          >
+            <Plus className="w-4 h-4" />
+            <span>Crear Usuario</span>
+          </button>
         </div>
 
         {/* Search */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="card-luxury"
+          className="relative"
         >
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 w-5 h-5" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="input-luxury pl-12"
-              placeholder="Buscar por nombre o email..."
-            />
-          </div>
+          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 w-4 h-4 z-10" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="input-luxury pl-11 text-sm h-10"
+            placeholder="Buscar por nombre o email..."
+          />
         </motion.div>
 
-        {/* Users Table */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="card-luxury overflow-x-auto"
-        >
+        {/* Users Grid - Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {loading ? (
-            <div className="text-center py-12 text-gray-400">
+            <div className="col-span-full text-center py-12 text-gray-400">
               Cargando usuarios...
             </div>
           ) : filteredUsers.length === 0 ? (
-            <div className="text-center py-12">
-              <UsersIcon className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-              <p className="text-gray-400">
+            <div className="col-span-full text-center py-12">
+              <UsersIcon className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+              <p className="text-gray-400 text-sm">
                 {users.length === 0
                   ? 'No hay usuarios registrados'
                   : 'No se encontraron usuarios'}
               </p>
             </div>
           ) : (
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-luxury-gray">
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium">
-                    Usuario
-                  </th>
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium">
-                    Email
-                  </th>
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium">
-                    Rol
-                  </th>
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium">
-                    Fecha de Registro
-                  </th>
-                  <th className="text-right py-3 px-4 text-gray-400 font-medium">
-                    Acciones
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredUsers.map((user) => (
-                  <tr
-                    key={user.id}
-                    className="border-b border-luxury-gray hover:bg-luxury-gray/50 transition-colors"
-                  >
-                    <td className="py-4 px-4">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-luxury-gold rounded-full flex items-center justify-center">
-                          <span className="text-luxury-black font-semibold text-sm">
-                            {user.full_name?.charAt(0).toUpperCase() || 'U'}
-                          </span>
-                        </div>
-                        <div>
-                          <p className="text-luxury-white font-medium">
-                            {user.full_name || 'Sin nombre'}
-                          </p>
-                          {user.id === currentUser.id && (
-                            <span className="text-xs text-luxury-gold">(Tú)</span>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-4 px-4 text-gray-400">
-                      {user.email}
-                    </td>
-                    <td className="py-4 px-4">
-                      <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium border ${getRoleColor(user.role)}`}>
-                        {getRoleLabel(user.role)}
+            filteredUsers.map((user, index) => (
+              <motion.div
+                key={user.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05 }}
+                whileHover={{ y: -4 }}
+                className="relative group"
+              >
+                <div
+                  className="relative p-4 rounded-xl border transition-all duration-300"
+                  style={{
+                    background: 'rgba(30, 41, 59, 0.5)',
+                    borderColor: 'rgba(71, 85, 105, 0.5)',
+                    backdropFilter: 'blur(10px)'
+                  }}
+                >
+                  {/* User Info */}
+                  <div className="flex items-start space-x-3 mb-3">
+                    <div
+                      className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0"
+                      style={{
+                        background: user.role === 'system_admin'
+                          ? 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)'
+                          : user.role === 'admin'
+                          ? 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)'
+                          : 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'
+                      }}
+                    >
+                      <span className="text-white font-bold text-lg">
+                        {user.full_name?.charAt(0).toUpperCase() || 'U'}
                       </span>
-                    </td>
-                    <td className="py-4 px-4 text-gray-400 text-sm">
-                      {new Date(user.created_at).toLocaleDateString('es-ES')}
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="flex items-center justify-end space-x-2">
-                        <button
-                          onClick={() => handleEdit(user)}
-                          className="p-2 text-luxury-gold hover:bg-luxury-gold/10 rounded-lg transition-colors"
-                          title="Editar usuario"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        {user.id !== currentUser.id && (
-                          <button
-                            onClick={() => handleDelete(user.id)}
-                            className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                            title="Eliminar usuario"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center space-x-2 mb-1">
+                        <h3 className="text-sm font-semibold text-luxury-white truncate">
+                          {user.full_name || 'Sin nombre'}
+                        </h3>
+                        {user.id === currentUser.id && (
+                          <span className="text-xs px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-400">
+                            Tú
+                          </span>
                         )}
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      <p className="text-xs text-gray-400 truncate">
+                        {user.email}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Role Badge */}
+                  <div className="mb-3">
+                    <span className={`inline-block px-2 py-1 rounded text-xs font-medium border ${getRoleColor(user.role)}`}>
+                      {getRoleLabel(user.role)}
+                    </span>
+                  </div>
+
+                  {/* Meta Info */}
+                  <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
+                    <span>
+                      {new Date(user.created_at).toLocaleDateString('es-ES')}
+                    </span>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => handleEdit(user)}
+                      className="flex-1 flex items-center justify-center space-x-1.5 px-3 py-2 text-xs font-medium text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors border border-blue-500/30"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                      <span>Editar</span>
+                    </button>
+                    {user.id !== currentUser.id && (
+                      <button
+                        onClick={() => handleDelete(user.id)}
+                        className="flex-1 flex items-center justify-center space-x-1.5 px-3 py-2 text-xs font-medium text-red-400 hover:bg-red-500/10 rounded-lg transition-colors border border-red-500/30"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Eliminar</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            ))
           )}
-        </motion.div>
+        </div>
       </div>
 
-      {/* Edit Modal */}
+      {/* Edit/Create Modal */}
       <AnimatePresence>
-        {showModal && editingUser && (
+        {showModal && (
           <>
             <motion.div
               initial={{ opacity: 0 }}
@@ -297,8 +387,8 @@ export default function Users() {
                 className="bg-luxury-darkGray rounded-xl border border-luxury-gray max-w-md w-full p-6"
               >
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-display font-bold text-luxury-white">
-                    Editar Usuario
+                  <h2 className="text-xl font-semibold text-luxury-white">
+                    {editingUser ? 'Editar Usuario' : 'Crear Usuario'}
                   </h2>
                   <button
                     onClick={handleCloseModal}
@@ -309,6 +399,22 @@ export default function Users() {
                 </div>
 
                 <div className="space-y-4">
+                  {/* Username - solo en creación */}
+                  {!editingUser && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Nombre de Usuario
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.username}
+                        onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                        className="input-luxury"
+                        placeholder="usuario123"
+                      />
+                    </div>
+                  )}
+
                   {/* Full Name */}
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -319,10 +425,11 @@ export default function Users() {
                       value={formData.full_name}
                       onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
                       className="input-luxury"
+                      placeholder="Juan Pérez"
                     />
                   </div>
 
-                  {/* Email (readonly) */}
+                  {/* Email */}
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
                       Email
@@ -330,13 +437,33 @@ export default function Users() {
                     <input
                       type="email"
                       value={formData.email}
-                      className="input-luxury opacity-50 cursor-not-allowed"
-                      readOnly
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      className={`input-luxury ${editingUser ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      readOnly={!!editingUser}
+                      placeholder="usuario@email.com"
                     />
-                    <p className="text-xs text-gray-500 mt-1">
-                      El email no puede ser modificado
-                    </p>
+                    {editingUser && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        El email no puede ser modificado
+                      </p>
+                    )}
                   </div>
+
+                  {/* Password - solo en creación */}
+                  {!editingUser && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Contraseña
+                      </label>
+                      <input
+                        type="password"
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        className="input-luxury"
+                        placeholder="••••••••"
+                      />
+                    </div>
+                  )}
 
                   {/* Role */}
                   <div>
@@ -347,7 +474,7 @@ export default function Users() {
                       value={formData.role}
                       onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                       className="input-luxury"
-                      disabled={editingUser.id === currentUser.id}
+                      disabled={editingUser && editingUser.id === currentUser.id}
                     >
                       {roles.map(role => (
                         <option key={role.value} value={role.value}>
@@ -355,7 +482,7 @@ export default function Users() {
                         </option>
                       ))}
                     </select>
-                    {editingUser.id === currentUser.id && (
+                    {editingUser && editingUser.id === currentUser.id && (
                       <p className="text-xs text-gray-500 mt-1">
                         No puedes cambiar tu propio rol
                       </p>
@@ -363,7 +490,7 @@ export default function Users() {
                   </div>
 
                   {/* System Admin Warning */}
-                  {formData.role === 'system_admin' && editingUser.role !== 'system_admin' && (
+                  {formData.role === 'system_admin' && (!editingUser || editingUser.role !== 'system_admin') && (
                     <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 flex items-start space-x-2">
                       <Shield className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
                       <div>
@@ -395,6 +522,15 @@ export default function Users() {
           </>
         )}
       </AnimatePresence>
+
+      {/* Custom Alert */}
+      <CustomAlert
+        isOpen={alert.isOpen}
+        onClose={closeAlert}
+        title={alert.title}
+        message={alert.message}
+        type={alert.type}
+      />
     </Layout>
   )
 }

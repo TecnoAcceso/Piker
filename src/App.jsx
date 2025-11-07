@@ -9,6 +9,7 @@ import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Templates from './pages/Templates'
 import SendMessage from './pages/SendMessage'
+import SelectMessageType from './pages/SelectMessageType'
 import History from './pages/History'
 import Licenses from './pages/Licenses'
 import Users from './pages/Users'
@@ -36,6 +37,15 @@ function App() {
             element={
               <ProtectedRoute>
                 <Templates />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/send"
+            element={
+              <ProtectedRoute>
+                <SelectMessageType />
               </ProtectedRoute>
             }
           />

@@ -11,13 +11,17 @@ import {
   Menu,
   X,
   LogOut,
-  ChevronRight
+  ChevronRight,
+  CheckCircle,
+  XCircle
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import { supabase } from '../lib/supabase'
 
 export default function Layout({ children }) {
   // Sidebar closed by default on mobile, open on desktop
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [license, setLicense] = useState(null)
 
   // Open sidebar on desktop by default
   useEffect(() => {
@@ -36,7 +40,33 @@ export default function Layout({ children }) {
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])
-  const { profile, signOut, isAdmin, isSystemAdmin } = useAuth()
+
+  const { profile, signOut, isSystemAdmin } = useAuth()
+
+  // Fetch license status
+  useEffect(() => {
+    const fetchLicense = async () => {
+      if (!profile?.id) return
+
+      try {
+        const { data, error } = await supabase
+          .from('licenses')
+          .select('*')
+          .eq('user_id', profile.id)
+          .eq('is_active', true)
+          .gte('valid_until', new Date().toISOString())
+          .order('valid_until', { ascending: false })
+          .limit(1)
+
+        if (error) throw error
+        setLicense(data && data.length > 0 ? data[0] : null)
+      } catch (error) {
+        console.error('Error fetching license:', error)
+      }
+    }
+
+    fetchLicense()
+  }, [profile])
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -47,7 +77,7 @@ export default function Layout({ children }) {
 
   const navigation = [
     {
-      name: 'Dashboard',
+      name: 'Inicio',
       href: '/dashboard',
       icon: BarChart3,
       show: true
@@ -79,7 +109,7 @@ export default function Layout({ children }) {
       name: 'Usuarios',
       href: '/users',
       icon: Users,
-      show: isAdmin
+      show: isSystemAdmin
     },
     {
       name: 'Licencias',
@@ -132,7 +162,7 @@ export default function Layout({ children }) {
               </Link>
               <motion.button
                 onClick={() => setSidebarOpen(false)}
-                className="lg:hidden w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-300"
+                className="lg:hidden w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-300 relative z-20"
                 style={{
                   background: 'rgba(239, 68, 68, 0.1)',
                   border: '1px solid rgba(239, 68, 68, 0.3)',
@@ -309,21 +339,26 @@ export default function Layout({ children }) {
             boxShadow: '0 4px 24px rgba(0, 0, 0, 0.2)'
           }}
         >
-          <motion.button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300 group"
-            style={{
-              background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(6, 182, 212, 0.1) 100%)',
-              border: '1px solid rgba(59, 130, 246, 0.2)'
-            }}
-            whileHover={{ scale: 1.05, rotate: 90 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <Menu
-              className="w-5 h-5 transition-colors"
-              style={{ color: '#3b82f6' }}
-            />
-          </motion.button>
+          <div className="flex items-center space-x-4">
+            <motion.button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300 group"
+              style={{
+                background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(6, 182, 212, 0.1) 100%)',
+                border: '1px solid rgba(59, 130, 246, 0.2)'
+              }}
+              whileHover={{ scale: 1.05, rotate: 90 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <Menu
+                className="w-5 h-5 transition-colors"
+                style={{ color: '#3b82f6' }}
+              />
+            </motion.button>
+            <h1 className="text-2xl font-display font-bold gradient-text">
+              Piker
+            </h1>
+          </div>
 
           <motion.div
             className="flex items-center space-x-3"
@@ -331,7 +366,7 @@ export default function Layout({ children }) {
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
           >
-            <p className="text-sm font-medium text-gray-400">
+            <p className="text-xs font-medium text-gray-400">
               Hola, <span className="text-luxury-white font-semibold">{profile?.full_name || 'Usuario'}</span>
             </p>
             <motion.div
@@ -351,9 +386,54 @@ export default function Layout({ children }) {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-auto p-8">
+        <main className="flex-1 overflow-auto p-8 pb-16">
           {children}
         </main>
+
+        {/* Footer - Estilo Tiki */}
+        <footer
+          className="border-t py-2 px-8 fixed bottom-0 left-0 right-0 z-30"
+          style={{
+            background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.98) 100%)',
+            backdropFilter: 'blur(20px)',
+            borderTop: '2px solid rgba(251, 191, 36, 0.3)',
+            boxShadow: '0 -4px 20px rgba(0, 0, 0, 0.3)'
+          }}
+        >
+          <div className="flex items-center justify-between">
+            {/* License Status */}
+            <div className="flex items-center space-x-2">
+              {license ? (
+                <>
+                  <CheckCircle className="w-3.5 h-3.5 text-green-400" />
+                  <span className="text-xs text-gray-300">
+                    Licencia activa hasta{' '}
+                    <span className="text-green-400 font-semibold">
+                      {new Date(license.valid_until).toLocaleDateString('es-ES')}
+                    </span>
+                  </span>
+                </>
+              ) : (
+                <>
+                  <XCircle className="w-3.5 h-3.5 text-red-400" />
+                  <span className="text-xs text-red-400 font-semibold">
+                    Sin licencia activa
+                  </span>
+                </>
+              )}
+            </div>
+
+            {/* Branding - Estilo Tiki */}
+            <div className="flex items-center space-x-3">
+              <span className="text-lg font-bold text-yellow-400" style={{ fontFamily: 'monospace' }}>&lt;/&gt;</span>
+              <div className="flex items-center space-x-2">
+                <span className="text-xs font-semibold text-yellow-400">ElectroShop</span>
+                <span className="text-xs text-gray-400">/</span>
+                <span className="text-xs font-semibold text-orange-400">TecnoAcceso</span>
+              </div>
+            </div>
+          </div>
+        </footer>
       </div>
 
       {/* Mobile Sidebar Overlay */}

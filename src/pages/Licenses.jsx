@@ -36,18 +36,28 @@ export default function Licenses() {
     try {
       const { data, error } = await supabase
         .from('licenses')
-        .select(`
-          *,
-          profiles:user_id (
-            id,
-            email,
-            full_name
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false })
 
       if (error) throw error
-      setLicenses(data || [])
+
+      // Cargar perfiles manualmente
+      if (data && data.length > 0) {
+        const userIds = [...new Set(data.map(l => l.user_id))]
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, email, full_name')
+          .in('id', userIds)
+
+        const licensesWithProfiles = data.map(license => ({
+          ...license,
+          profiles: profiles?.find(p => p.id === license.user_id) || null
+        }))
+
+        setLicenses(licensesWithProfiles)
+      } else {
+        setLicenses([])
+      }
     } catch (error) {
       console.error('Error fetching licenses:', error)
     } finally {
@@ -57,13 +67,28 @@ export default function Licenses() {
 
   const fetchUsers = async () => {
     try {
-      const { data, error } = await supabase
+      // Obtener todos los usuarios
+      const { data: allUsers, error: usersError } = await supabase
         .from('profiles')
         .select('id, email, full_name')
         .order('full_name')
 
-      if (error) throw error
-      setUsers(data || [])
+      if (usersError) throw usersError
+
+      // Obtener usuarios con licencias activas
+      const { data: activeLicenses, error: licensesError } = await supabase
+        .from('licenses')
+        .select('user_id')
+        .eq('is_active', true)
+        .gte('valid_until', new Date().toISOString())
+
+      if (licensesError) throw licensesError
+
+      // Filtrar usuarios que NO tienen licencia activa
+      const usersWithLicenseIds = new Set(activeLicenses?.map(l => l.user_id) || [])
+      const usersWithoutLicense = allUsers?.filter(user => !usersWithLicenseIds.has(user.id)) || []
+
+      setUsers(usersWithoutLicense)
     } catch (error) {
       console.error('Error fetching users:', error)
     }
