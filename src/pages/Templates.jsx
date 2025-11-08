@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Edit2, Trash2, Save, X, FileText } from 'lucide-react'
+import { Plus, Trash2, Save, X, FileText } from 'lucide-react'
 import { AiOutlineFileAdd } from "react-icons/ai"
+import { FaEdit } from "react-icons/fa"
 import Layout from '../components/Layout'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -266,7 +267,7 @@ export default function Templates() {
                       color: '#3b82f6'
                     }}
                   >
-                    <Edit2 className="w-3 h-3" />
+                    <FaEdit className="w-3 h-3" />
                     <span className="text-[10px] font-semibold">Editar</span>
                   </motion.button>
                   <motion.button

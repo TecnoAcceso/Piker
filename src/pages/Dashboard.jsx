@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Package, Send, Clock, TrendingUp, FileText, Users, CheckCircle, XCircle, X, List, Calendar, RotateCcw, Inbox, ArrowRight } from 'lucide-react'
+import { Package, Send, Clock, TrendingUp, FileText, Users, CheckCircle, XCircle, X, List, Calendar, RotateCcw, Inbox, ArrowRight, Bell } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import Layout from '../components/Layout'
@@ -213,7 +213,7 @@ export default function Dashboard() {
       id: 'reminder',
       title: 'Recordatorios',
       description: 'Enviar recordatorios de recogida',
-      icon: Clock,
+      icon: Bell,
       path: '/send/reminder',
       gradient: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
       glowColor: 'rgba(245, 158, 11, 0.4)',

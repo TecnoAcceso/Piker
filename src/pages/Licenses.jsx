@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Edit2, Trash2, Key, Save, X, Shield, RefreshCw, CheckCircle, XCircle, Clock, Calendar, AlertCircle } from 'lucide-react'
+import { Plus, Trash2, Key, Save, X, Shield, RefreshCw, CheckCircle, XCircle, Clock, Calendar, AlertCircle } from 'lucide-react'
 import { MdAddModerator } from "react-icons/md"
+import { FaEdit } from "react-icons/fa"
 import Layout from '../components/Layout'
 import { supabase } from '../lib/supabase'
 
@@ -594,7 +595,7 @@ export default function Licenses() {
                             color: '#E4003B'
                           }}
                         >
-                          <Edit2 className="w-3 h-3" />
+                          <FaEdit className="w-3 h-3" />
                         </motion.button>
                         <motion.button
                           whileHover={{ scale: 1.1 }}

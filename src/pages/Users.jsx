@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Users as UsersIcon, Edit2, Trash2, Save, X, Search, Shield } from 'lucide-react'
+import { Users as UsersIcon, Trash2, Save, X, Search, Shield } from 'lucide-react'
 import { MdGroupAdd } from "react-icons/md"
+import { FaEdit } from "react-icons/fa"
 import Layout from '../components/Layout'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
@@ -386,7 +387,7 @@ export default function Users() {
                       onClick={() => handleEdit(user)}
                       className="flex-1 flex items-center justify-center space-x-1 px-2 py-1 text-[10px] font-medium text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors border border-blue-500/30"
                     >
-                      <Edit2 className="w-3 h-3" />
+                      <FaEdit className="w-3 h-3" />
                       <span>Editar</span>
                     </button>
                     {user.id !== currentUser.id && (

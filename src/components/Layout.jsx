@@ -6,7 +6,6 @@ import {
   Send,
   FileText,
   BarChart3,
-  Key,
   Users,
   Menu,
   X,
@@ -20,6 +19,7 @@ import {
   Settings,
   Info
 } from 'lucide-react'
+import { IoShieldHalf } from "react-icons/io5"
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import UserProfileModal from './UserProfileModal'
@@ -193,7 +193,7 @@ export default function Layout({ children }) {
     {
       name: 'Licencias',
       href: '/licenses',
-      icon: Key,
+      icon: IoShieldHalf,
       show: isSystemAdmin
     }
   ]
