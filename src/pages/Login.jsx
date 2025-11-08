@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { User, Lock, Loader2, Shield, MessageCircle, Eye, EyeOff } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { User, Lock, Loader2, Shield, Eye, EyeOff, ArrowLeft, ShoppingCart, Key, Mail, Copy, Check } from 'lucide-react'
+import { FaWhatsapp } from 'react-icons/fa'
 import { useAuth } from '../contexts/AuthContext'
 import CustomAlert from '../components/CustomAlert'
 
@@ -13,7 +14,17 @@ export default function Login() {
   const [error, setError] = useState('')
   const [showLicenseAlert, setShowLicenseAlert] = useState(false)
   const [showPendingApiAlert, setShowPendingApiAlert] = useState(false)
-  const { signIn } = useAuth()
+  const [showLoginForm, setShowLoginForm] = useState(false)
+  const [showAcquireApp, setShowAcquireApp] = useState(false)
+  const [showRecovery, setShowRecovery] = useState(false)
+  const [recoveryStep, setRecoveryStep] = useState('select') // 'select', 'username', 'password'
+  const [recoveryEmail, setRecoveryEmail] = useState('')
+  const [recoveryLoading, setRecoveryLoading] = useState(false)
+  const [recoveryError, setRecoveryError] = useState('')
+  const [recoverySuccess, setRecoverySuccess] = useState('')
+  const [temporaryPassword, setTemporaryPassword] = useState('')
+  const [passwordCopied, setPasswordCopied] = useState(false)
+  const { signIn, recoverUsername, recoverPassword } = useAuth()
   const navigate = useNavigate()
 
   // Contactos de soporte WhatsApp
@@ -26,9 +37,83 @@ export default function Login() {
   const getWhatsAppMessage = (alertType) => {
     const messages = {
       license_required: 'Hola, necesito ayuda con mi licencia en la aplicación Piker. Mi cuenta no tiene una licencia activa y necesito que me asignen una.',
-      pending_api: 'Hola, necesito ayuda con la configuración de WhatsApp Business API en la aplicación Piker. Mi licencia está creada pero está pendiente de configuración.'
+      pending_api: 'Hola, necesito ayuda con la configuración de WhatsApp Business API en la aplicación Piker. Mi licencia está creada pero está pendiente de configuración.',
+      request_access: 'Hola, me gustaría solicitar acceso a la aplicación Piker. ¿Podrían ayudarme a obtener una cuenta?',
+      recovery: 'Hola, necesito ayuda para recuperar mi contraseña o usuario en la aplicación Piker. ¿Podrían ayudarme?'
     }
     return encodeURIComponent(messages[alertType] || 'Hola, necesito ayuda con mi cuenta en la aplicación Piker.')
+  }
+
+  const handleCopyPassword = async () => {
+    if (temporaryPassword) {
+      try {
+        await navigator.clipboard.writeText(temporaryPassword)
+        setPasswordCopied(true)
+        setTimeout(() => setPasswordCopied(false), 2000)
+      } catch (error) {
+        console.error('Error al copiar:', error)
+      }
+    }
+  }
+
+  const handleRecoverUsername = async (e) => {
+    e.preventDefault()
+    setRecoveryError('')
+    setRecoverySuccess('')
+    setRecoveryLoading(true)
+
+    try {
+      const result = await recoverUsername(recoveryEmail)
+      
+      if (result.success) {
+        setRecoverySuccess(result.message)
+        setTimeout(() => {
+          setShowRecovery(false)
+          setShowLoginForm(true)
+          setRecoveryStep('select')
+          setRecoveryEmail('')
+        }, 3000)
+      } else {
+        setRecoveryError(result.message || 'Error al recuperar el usuario')
+      }
+    } catch (error) {
+      setRecoveryError('Error al recuperar el usuario. Por favor, intente nuevamente.')
+    } finally {
+      setRecoveryLoading(false)
+    }
+  }
+
+  const handleRecoverPassword = async (e) => {
+    e.preventDefault()
+    setRecoveryError('')
+    setRecoverySuccess('')
+    setTemporaryPassword('')
+    setRecoveryLoading(true)
+
+    try {
+      const result = await recoverPassword(recoveryEmail)
+      
+      if (result.success) {
+        setRecoverySuccess(result.message)
+        // Si hay contraseña temporal (fallback), guardarla para mostrarla
+        if (result.temporaryPassword) {
+          setTemporaryPassword(result.temporaryPassword)
+        }
+        setTimeout(() => {
+          setShowRecovery(false)
+          setShowLoginForm(true)
+          setRecoveryStep('select')
+          setRecoveryEmail('')
+          setTemporaryPassword('')
+        }, result.fallback ? 10000 : 3000) // Más tiempo si es fallback para que puedan copiar
+      } else {
+        setRecoveryError(result.message || 'Error al recuperar la contraseña')
+      }
+    } catch (error) {
+      setRecoveryError('Error al recuperar la contraseña. Por favor, intente nuevamente.')
+    } finally {
+      setRecoveryLoading(false)
+    }
   }
 
   const handleSubmit = async (e) => {
@@ -96,170 +181,783 @@ export default function Login() {
         />
       </div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="w-full max-w-md relative z-10"
-      >
-        {/* Logo and Title */}
-        <div className="text-center mb-8">
-          <div className="relative inline-block mb-0">
-            {/* Logo Container - Simple with glow effect */}
-            <div className="relative inline-flex items-center justify-center">
-              {/* Intenta cargar el logo, si no existe muestra el icono */}
-              <img
-                src="/logo.png"
-                alt="Logo"
-                className="w-64 h-auto object-contain"
-                style={{
-                  filter: 'drop-shadow(0 0 20px rgba(255, 255, 255, 0.4)) drop-shadow(0 0 40px rgba(255, 255, 255, 0.2))',
-                }}
-                onError={(e) => {
-                  e.target.style.display = 'none';
-                  e.target.nextElementSibling.style.display = 'flex';
-                }}
-              />
-              <div
-                className="hidden items-center justify-center w-20 h-20 rounded-xl bg-gradient-to-br from-luxury-raspberry to-luxury-raspberryDark"
-                style={{
-                  filter: 'drop-shadow(0 0 20px rgba(255, 255, 255, 0.4))',
-                }}
-              >
-                <Shield
-                  className="w-12 h-12 text-white"
-                  strokeWidth={2}
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-center gap-2 mb-0">
-            <img
-              src="/palabra.png"
-              alt="Piker"
-              className="h-12 object-contain"
-              style={{
-                filter: 'drop-shadow(0 0 10px rgba(228, 0, 59, 0.3))',
+      <div className="w-full max-w-md relative z-10">
+        <AnimatePresence mode="wait" custom={showAcquireApp}>
+          {!showLoginForm && !showAcquireApp && !showRecovery ? (
+            // Pantalla inicial: Logo y botón
+            <motion.div
+              key="initial-screen"
+              custom={showAcquireApp}
+              variants={{
+                initial: { x: -1000, opacity: 0 },
+                animate: { x: 0, opacity: 1 },
+                exit: (isAcquiring) => ({ 
+                  x: isAcquiring ? 1000 : -1000, 
+                  opacity: 0 
+                })
               }}
-              onError={(e) => {
-                e.target.style.display = 'none'
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={{ 
+                duration: 0.5,
+                ease: [0.4, 0, 0.2, 1]
               }}
-            />
-            <div className="flex flex-col items-start">
-              <span className="text-[10px] text-gray-500/40 font-light tracking-wider">
-                BETA
-              </span>
-              <span className="text-[9px] text-gray-500/30 font-light">
-                v1.0
-              </span>
-            </div>
-          </div>
-
-          <p className="text-gray-400 text-sm font-light mt-0">
-            Sistema de Mensajería
-          </p>
-        </div>
-
-        {/* Login Card */}
-        <div className="relative">
-          {/* Card subtle glow */}
-          <div className="absolute inset-0 bg-gradient-to-br from-luxury-raspberry/10 via-transparent to-luxury-raspberryDark/10 rounded-2xl blur-xl" />
-
-          <div className="relative card-luxury border-luxury-brightBlue/20 backdrop-blur-xl bg-luxury-navyBlue/40 p-6">
-            {error && (
+              className="w-full"
+            >
+              {/* Logo animado */}
               <motion.div
-                initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                className="bg-red-500/10 border border-red-500/50 rounded-xl p-3 mb-4 backdrop-blur-sm"
+                initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ 
+                  duration: 0.8,
+                  ease: [0.34, 1.56, 0.64, 1]
+                }}
+                className="text-center mb-8"
               >
-                <p className="text-red-400 text-sm font-medium">{error}</p>
+                <div className="relative inline-block mb-6">
+                  <div className="relative inline-flex items-center justify-center">
+                    <img
+                      src="/logo.png"
+                      alt="Logo"
+                      className="w-64 h-auto object-contain"
+                      style={{
+                        filter: 'drop-shadow(0 0 20px rgba(255, 255, 255, 0.4)) drop-shadow(0 0 40px rgba(255, 255, 255, 0.2))',
+                      }}
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextElementSibling.style.display = 'flex';
+                      }}
+                    />
+                    <div
+                      className="hidden items-center justify-center w-20 h-20 rounded-xl bg-gradient-to-br from-luxury-raspberry to-luxury-raspberryDark"
+                      style={{
+                        filter: 'drop-shadow(0 0 20px rgba(255, 255, 255, 0.4))',
+                      }}
+                    >
+                      <Shield
+                        className="w-12 h-12 text-white"
+                        strokeWidth={2}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3, duration: 0.6 }}
+                  className="flex items-center justify-center gap-2 mb-4"
+                >
+                  <img
+                    src="/palabra.png"
+                    alt="Piker"
+                    className="h-12 object-contain"
+                    style={{
+                      filter: 'drop-shadow(0 0 10px rgba(228, 0, 59, 0.3))',
+                    }}
+                    onError={(e) => {
+                      e.target.style.display = 'none'
+                    }}
+                  />
+                  <div className="flex flex-col items-start">
+                    <span className="text-[10px] text-gray-500/40 font-light tracking-wider">
+                      BETA
+                    </span>
+                    <span className="text-[9px] text-gray-500/30 font-light">
+                      v1.0
+                    </span>
+                  </div>
+                </motion.div>
+
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.5, duration: 0.6 }}
+                  className="text-gray-400 text-sm font-light"
+                >
+                  Sistema de Mensajería
+                </motion.p>
               </motion.div>
-            )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-300 mb-2">
-                  Usuario
-                </label>
-                <div className="relative group">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-red-500 w-4 h-4 z-10 group-hover:text-red-600 transition-colors" />
-                  <input
-                    type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="relative w-full pl-10 pr-4 py-2.5 bg-white border border-luxury-raspberry/20 rounded-lg text-gray-900 placeholder-gray-400 hover:border-luxury-raspberry/40 focus:border-luxury-raspberry focus:outline-none transition-all text-sm"
-                    placeholder="Usuario"
-                    required
-                    disabled={loading}
-                    autoComplete="username"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-300 mb-2">
-                  Contraseña
-                </label>
-                <div className="relative group">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-red-500 w-4 h-4 z-10 group-hover:text-red-600 transition-colors" />
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="relative w-full pl-10 pr-10 py-2.5 bg-white border border-luxury-raspberry/20 rounded-lg text-gray-900 placeholder-gray-400 hover:border-luxury-raspberry/40 focus:border-luxury-raspberry focus:outline-none transition-all text-sm"
-                    placeholder="••••••••"
-                    required
-                    disabled={loading}
-                    autoComplete="current-password"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-red-500 hover:text-red-600 transition-colors z-10"
-                  >
-                    {showPassword ? (
-                      <EyeOff className="w-4 h-4" />
-                    ) : (
-                      <Eye className="w-4 h-4" />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                type="submit"
-                disabled={loading}
-                className="btn-primary w-full flex items-center justify-center space-x-2 mt-6 text-sm font-semibold py-3 relative overflow-hidden group"
+              {/* Botón de iniciar sesión */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6, duration: 0.6 }}
+                className="flex justify-center mb-4"
               >
-                <div className="absolute inset-0 bg-gradient-to-r from-luxury-cyan via-luxury-brightBlue to-luxury-cyan opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                {loading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin relative z-10" />
-                    <span className="relative z-10">Verificando...</span>
-                  </>
-                ) : (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => {
+                    setShowLoginForm(true)
+                    setShowAcquireApp(false)
+                    setShowRecovery(false)
+                  }}
+                  className="btn-primary px-12 py-4 text-base font-semibold relative overflow-hidden group"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-luxury-cyan via-luxury-brightBlue to-luxury-cyan opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   <span className="relative z-10">Iniciar Sesión</span>
-                )}
-              </motion.button>
-            </form>
-          </div>
-        </div>
+                </motion.button>
+              </motion.div>
 
-        {/* Footer */}
-        <div className="text-center mt-8 space-y-4">
-          <div className="flex items-center justify-center space-x-2 text-gray-500 text-sm">
-            <Shield className="w-4 h-4" />
-            <span>Protegido con encriptación</span>
-          </div>
+              {/* Botón de adquirir app */}
+              <motion.div
+                initial={{ opacity: 0, x: 1000 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.8, duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
+                className="flex justify-center mt-6"
+              >
+                <motion.button
+                  onClick={() => {
+                    setShowAcquireApp(true)
+                    setShowLoginForm(false)
+                    setShowRecovery(false)
+                  }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="flex items-center gap-2 text-gray-400 hover:text-gray-300 text-sm font-light underline underline-offset-4 transition-colors group"
+                >
+                  <ShoppingCart className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                  <span>Adquiere la app aquí</span>
+                </motion.button>
+              </motion.div>
+            </motion.div>
+          ) : showLoginForm ? (
+            // Pantalla de formulario: Inputs de login
+            <motion.div
+              key="login-form"
+              initial={{ x: 1000, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: 1000, opacity: 0 }}
+              transition={{ 
+                duration: 0.6,
+                ease: [0.4, 0, 0.2, 1]
+              }}
+              className="w-full"
+            >
+              {/* Botón Atrás */}
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5 }}
+                className="mb-4"
+              >
+                <motion.button
+                  whileHover={{ scale: 1.05, x: -2 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => {
+                    setShowLoginForm(false)
+                    setShowAcquireApp(false)
+                    setShowRecovery(false)
+                    setError('')
+                    setUsername('')
+                    setPassword('')
+                  }}
+                  className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors group"
+                  aria-label="Volver"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </motion.button>
+              </motion.div>
 
-          <p className="text-gray-600 text-sm font-light">
-            © 2025 Piker. Todos los derechos reservados.
-          </p>
-        </div>
-      </motion.div>
+              {/* Logo pequeño en la parte superior */}
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="text-center mb-6"
+              >
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <img
+                    src="/palabra.png"
+                    alt="Piker"
+                    className="h-10 object-contain"
+                    style={{
+                      filter: 'drop-shadow(0 0 10px rgba(228, 0, 59, 0.3))',
+                    }}
+                    onError={(e) => {
+                      e.target.style.display = 'none'
+                    }}
+                  />
+                </div>
+                <p className="text-gray-400 text-sm font-light">
+                  Inicia sesión en tu cuenta
+                </p>
+              </motion.div>
+
+              {/* Login Card */}
+              <div className="relative">
+                {/* Card subtle glow */}
+                <div className="absolute inset-0 bg-gradient-to-br from-luxury-raspberry/10 via-transparent to-luxury-raspberryDark/10 rounded-2xl blur-xl" />
+
+                <div className="relative card-luxury border-luxury-brightBlue/20 backdrop-blur-xl bg-luxury-navyBlue/40 p-6">
+                  {error && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      className="bg-red-500/10 border border-red-500/50 rounded-xl p-3 mb-4 backdrop-blur-sm"
+                    >
+                      <p className="text-red-400 text-sm font-medium">{error}</p>
+                    </motion.div>
+                  )}
+
+                  <form onSubmit={handleSubmit} className="space-y-4">
+                    <motion.div
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.2, duration: 0.5 }}
+                    >
+                      <label className="block text-xs font-semibold text-gray-300 mb-2">
+                        Usuario
+                      </label>
+                      <div className="relative group">
+                        <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-red-500 w-4 h-4 z-10 group-hover:text-red-600 transition-colors" />
+                        <input
+                          type="text"
+                          value={username}
+                          onChange={(e) => setUsername(e.target.value)}
+                          className="relative w-full pl-10 pr-4 py-2.5 bg-white border border-luxury-raspberry/20 rounded-lg text-gray-900 placeholder-gray-400 hover:border-luxury-raspberry/40 focus:border-luxury-raspberry focus:outline-none transition-all text-sm"
+                          placeholder="Usuario"
+                          required
+                          disabled={loading}
+                          autoComplete="username"
+                          autoFocus
+                        />
+                      </div>
+                    </motion.div>
+
+                    <motion.div
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.3, duration: 0.5 }}
+                    >
+                      <label className="block text-xs font-semibold text-gray-300 mb-2">
+                        Contraseña
+                      </label>
+                      <div className="relative group">
+                        <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-red-500 w-4 h-4 z-10 group-hover:text-red-600 transition-colors" />
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          className="relative w-full pl-10 pr-10 py-2.5 bg-white border border-luxury-raspberry/20 rounded-lg text-gray-900 placeholder-gray-400 hover:border-luxury-raspberry/40 focus:border-luxury-raspberry focus:outline-none transition-all text-sm"
+                          placeholder="••••••••"
+                          required
+                          disabled={loading}
+                          autoComplete="current-password"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-red-500 hover:text-red-600 transition-colors z-10"
+                        >
+                          {showPassword ? (
+                            <EyeOff className="w-4 h-4" />
+                          ) : (
+                            <Eye className="w-4 h-4" />
+                          )}
+                        </button>
+                      </div>
+                    </motion.div>
+
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.4, duration: 0.5 }}
+                    >
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        type="submit"
+                        disabled={loading}
+                        className="btn-primary w-full flex items-center justify-center space-x-2 mt-6 text-sm font-semibold py-3 relative overflow-hidden group"
+                      >
+                        <div className="absolute inset-0 bg-gradient-to-r from-luxury-cyan via-luxury-brightBlue to-luxury-cyan opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                        {loading ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin relative z-10" />
+                            <span className="relative z-10">Verificando...</span>
+                          </>
+                        ) : (
+                          <span className="relative z-10">Iniciar Sesión</span>
+                        )}
+                      </motion.button>
+                    </motion.div>
+
+                    {/* Enlace de recuperación */}
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.5, duration: 0.5 }}
+                      className="text-center mt-4"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowRecovery(true)
+                          setShowLoginForm(false)
+                        }}
+                        className="text-gray-400 hover:text-gray-300 text-xs font-light underline underline-offset-4 transition-colors flex items-center gap-1 mx-auto"
+                      >
+                        <Key className="w-3 h-3" />
+                        <span>¿Olvidaste tu contraseña o usuario?</span>
+                      </button>
+                    </motion.div>
+                  </form>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5, duration: 0.5 }}
+                className="text-center mt-6 space-y-2"
+              >
+                <div className="flex items-center justify-center space-x-2 text-gray-500 text-sm">
+                  <Shield className="w-4 h-4" />
+                  <span>Protegido con encriptación</span>
+                </div>
+                <p className="text-gray-600 text-xs font-light">
+                  © 2025 Piker. Todos los derechos reservados.
+                </p>
+              </motion.div>
+            </motion.div>
+          ) : showAcquireApp ? (
+            // Pantalla de adquirir app
+            <motion.div
+              key="acquire-app"
+              initial={{ x: -1000, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: -1000, opacity: 0 }}
+              transition={{ 
+                duration: 0.6,
+                ease: [0.4, 0, 0.2, 1]
+              }}
+              className="w-full"
+            >
+              {/* Botón Atrás */}
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5 }}
+                className="mb-6 flex justify-end"
+              >
+                <motion.button
+                  whileHover={{ scale: 1.05, x: 2 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => {
+                    setShowAcquireApp(false)
+                    setShowRecovery(false)
+                  }}
+                  className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors group"
+                  aria-label="Volver"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </motion.button>
+              </motion.div>
+
+              {/* Contenido de adquirir app */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2, duration: 0.6 }}
+                className="text-center mb-8"
+              >
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.3, duration: 0.6 }}
+                  className="mb-6"
+                >
+                  <div className="relative inline-flex items-center justify-center mb-4">
+                    <img
+                      src="/logo.png"
+                      alt="Logo"
+                      className="w-48 h-auto object-contain"
+                      style={{
+                        filter: 'drop-shadow(0 0 20px rgba(255, 255, 255, 0.4)) drop-shadow(0 0 40px rgba(255, 255, 255, 0.2))',
+                      }}
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextElementSibling.style.display = 'flex';
+                      }}
+                    />
+                    <div
+                      className="hidden items-center justify-center w-16 h-16 rounded-xl bg-gradient-to-br from-luxury-raspberry to-luxury-raspberryDark"
+                      style={{
+                        filter: 'drop-shadow(0 0 20px rgba(255, 255, 255, 0.4))',
+                      }}
+                    >
+                      <Shield
+                        className="w-10 h-10 text-white"
+                        strokeWidth={2}
+                      />
+                    </div>
+                  </div>
+                </motion.div>
+
+                <motion.h2
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4, duration: 0.6 }}
+                  className="text-2xl font-bold text-white mb-4"
+                >
+                  Adquiere la App
+                </motion.h2>
+
+                <motion.p
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5, duration: 0.6 }}
+                  className="text-gray-400 text-sm leading-relaxed mb-8 max-w-md mx-auto"
+                >
+                  ¿Te interesa obtener acceso a Piker? Contáctanos a través de WhatsApp y nuestro equipo te ayudará a adquirir tu licencia.
+                </motion.p>
+              </motion.div>
+
+              {/* Botón de WhatsApp */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6, duration: 0.6 }}
+                className="flex justify-center"
+              >
+                <motion.a
+                  href={`https://wa.me/${supportContacts[0].phone}?text=${getWhatsAppMessage('request_access')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="flex items-center gap-3 px-8 py-4 rounded-xl border-2 border-green-500/50 bg-green-500/10 hover:bg-green-500/20 text-green-400 hover:text-green-300 transition-all duration-300 group shadow-lg shadow-green-500/20"
+                >
+                  <FaWhatsapp className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                  <span className="text-base font-semibold">Contactar por WhatsApp</span>
+                </motion.a>
+              </motion.div>
+
+              {/* Información adicional */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.7, duration: 0.6 }}
+                className="mt-8 text-center"
+              >
+                <p className="text-gray-500 text-xs">
+                  Nuestro equipo responderá en breve
+                </p>
+              </motion.div>
+            </motion.div>
+          ) : (
+            // Pantalla de recuperación
+            <motion.div
+              key="recovery"
+              initial={{ x: 1000, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: 1000, opacity: 0 }}
+              transition={{ 
+                duration: 0.6,
+                ease: [0.4, 0, 0.2, 1]
+              }}
+              className="w-full"
+            >
+              {/* Botón Atrás */}
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5 }}
+                className="mb-6"
+              >
+                <motion.button
+                  whileHover={{ scale: 1.05, x: -2 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => {
+                    setShowRecovery(false)
+                    setShowLoginForm(true)
+                    setRecoveryStep('select')
+                    setRecoveryEmail('')
+                    setRecoveryError('')
+                    setRecoverySuccess('')
+                    setTemporaryPassword('')
+                    setPasswordCopied(false)
+                  }}
+                  className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors group"
+                  aria-label="Volver"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </motion.button>
+              </motion.div>
+
+              {/* Contenido de recuperación */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2, duration: 0.6 }}
+                className="text-center mb-6"
+              >
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.3, duration: 0.6 }}
+                  className="mb-4"
+                >
+                  <div className="relative inline-flex items-center justify-center mb-4">
+                    <div className="p-4 rounded-full bg-red-500/10 border-2 border-red-500/30">
+                      <Key className="w-8 h-8 text-red-500" />
+                    </div>
+                  </div>
+                </motion.div>
+
+                <motion.h2
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4, duration: 0.6 }}
+                  className="text-2xl font-bold text-white mb-2"
+                >
+                  Recuperar Acceso
+                </motion.h2>
+              </motion.div>
+
+              {/* Card de recuperación */}
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-br from-luxury-raspberry/10 via-transparent to-luxury-raspberryDark/10 rounded-2xl blur-xl" />
+                
+                <div className="relative card-luxury border-luxury-brightBlue/20 backdrop-blur-xl bg-luxury-navyBlue/40 p-6">
+                  {recoveryError && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      className="bg-red-500/10 border border-red-500/50 rounded-xl p-3 mb-4 backdrop-blur-sm"
+                    >
+                      <p className="text-red-400 text-sm font-medium">{recoveryError}</p>
+                    </motion.div>
+                  )}
+
+                  {recoverySuccess && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      className="bg-green-500/10 border border-green-500/50 rounded-xl p-3 mb-4 backdrop-blur-sm"
+                    >
+                      <p className="text-green-400 text-sm font-medium">{recoverySuccess}</p>
+                    </motion.div>
+                  )}
+
+                  {temporaryPassword && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      className="bg-yellow-500/10 border-2 border-yellow-500/50 rounded-xl p-4 mb-4 backdrop-blur-sm"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-yellow-400 text-sm font-semibold">Contraseña Temporal:</p>
+                        <motion.button
+                          onClick={handleCopyPassword}
+                          className="p-1.5 rounded-lg bg-yellow-500/20 hover:bg-yellow-500/30 transition-colors"
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                        >
+                          {passwordCopied ? (
+                            <Check className="w-4 h-4 text-green-400" />
+                          ) : (
+                            <Copy className="w-4 h-4 text-yellow-400" />
+                          )}
+                        </motion.button>
+                      </div>
+                      <div className="bg-black/30 rounded-lg p-3 border border-yellow-500/30">
+                        <p className="text-yellow-300 text-xl font-mono font-bold text-center tracking-wider select-all">
+                          {temporaryPassword}
+                        </p>
+                      </div>
+                      <p className="text-yellow-400/70 text-xs mt-2 text-center">
+                        ⚠️ Por seguridad, cambia esta contraseña después de iniciar sesión
+                      </p>
+                    </motion.div>
+                  )}
+
+                  {recoveryStep === 'select' && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="space-y-4"
+                    >
+                      <p className="text-gray-400 text-sm text-center mb-4">
+                        ¿Qué necesitas recuperar?
+                      </p>
+                      <div className="grid grid-cols-1 gap-3">
+                        <motion.button
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => {
+                            setRecoveryStep('username')
+                            setRecoveryError('')
+                            setRecoverySuccess('')
+                            setTemporaryPassword('')
+                            setPasswordCopied(false)
+                          }}
+                          className="p-4 rounded-xl border-2 border-blue-500/50 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 hover:text-blue-300 transition-all duration-300 flex items-center justify-center gap-3"
+                        >
+                          <User className="w-5 h-5" />
+                          <span className="font-semibold">Olvidé mi Usuario</span>
+                        </motion.button>
+                        <motion.button
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => {
+                            setRecoveryStep('password')
+                            setRecoveryError('')
+                            setRecoverySuccess('')
+                            setTemporaryPassword('')
+                            setPasswordCopied(false)
+                          }}
+                          className="p-4 rounded-xl border-2 border-red-500/50 bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-all duration-300 flex items-center justify-center gap-3"
+                        >
+                          <Key className="w-5 h-5" />
+                          <span className="font-semibold">Olvidé mi Contraseña</span>
+                        </motion.button>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {recoveryStep === 'username' && (
+                    <motion.form
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      onSubmit={handleRecoverUsername}
+                      className="space-y-4"
+                    >
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-300 mb-2">
+                          Email
+                        </label>
+                        <div className="relative group">
+                          <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-red-500 w-4 h-4 z-10 group-hover:text-red-600 transition-colors" />
+                          <input
+                            type="email"
+                            value={recoveryEmail}
+                            onChange={(e) => setRecoveryEmail(e.target.value)}
+                            className="relative w-full pl-10 pr-4 py-2.5 bg-white border border-luxury-raspberry/20 rounded-lg text-gray-900 placeholder-gray-400 hover:border-luxury-raspberry/40 focus:border-luxury-raspberry focus:outline-none transition-all text-sm"
+                            placeholder="tu@email.com"
+                            required
+                            disabled={recoveryLoading}
+                            autoFocus
+                          />
+                        </div>
+                        <p className="text-gray-500 text-xs mt-2">
+                          Te enviaremos un correo con tu nombre de usuario
+                        </p>
+                      </div>
+
+                      <div className="flex gap-3">
+                        <motion.button
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          type="submit"
+                          disabled={recoveryLoading}
+                          className="btn-primary flex-1 flex items-center justify-center space-x-2 text-sm font-semibold py-3 relative overflow-hidden group"
+                        >
+                          <div className="absolute inset-0 bg-gradient-to-r from-luxury-cyan via-luxury-brightBlue to-luxury-cyan opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                          {recoveryLoading ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin relative z-10" />
+                              <span className="relative z-10">Enviando...</span>
+                            </>
+                          ) : (
+                            <span className="relative z-10">Enviar Usuario</span>
+                          )}
+                        </motion.button>
+                        <motion.button
+                          type="button"
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => {
+                            setRecoveryStep('select')
+                            setRecoveryEmail('')
+                            setRecoveryError('')
+                            setTemporaryPassword('')
+                            setPasswordCopied(false)
+                          }}
+                          className="px-4 py-3 rounded-lg border border-gray-600 text-gray-300 hover:bg-gray-700/50 transition-colors"
+                        >
+                          <ArrowLeft className="w-4 h-4" />
+                        </motion.button>
+                      </div>
+                    </motion.form>
+                  )}
+
+                  {recoveryStep === 'password' && (
+                    <motion.form
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      onSubmit={handleRecoverPassword}
+                      className="space-y-4"
+                    >
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-300 mb-2">
+                          Email o Usuario
+                        </label>
+                        <div className="relative group">
+                          <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-red-500 w-4 h-4 z-10 group-hover:text-red-600 transition-colors" />
+                          <input
+                            type="text"
+                            value={recoveryEmail}
+                            onChange={(e) => setRecoveryEmail(e.target.value)}
+                            className="relative w-full pl-10 pr-4 py-2.5 bg-white border border-luxury-raspberry/20 rounded-lg text-gray-900 placeholder-gray-400 hover:border-luxury-raspberry/40 focus:border-luxury-raspberry focus:outline-none transition-all text-sm"
+                            placeholder="tu@email.com o usuario"
+                            required
+                            disabled={recoveryLoading}
+                            autoFocus
+                          />
+                        </div>
+                        <p className="text-gray-500 text-xs mt-2">
+                          Te enviaremos una contraseña temporal a tu correo electrónico
+                        </p>
+                      </div>
+
+                      <div className="flex gap-3">
+                        <motion.button
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          type="submit"
+                          disabled={recoveryLoading}
+                          className="btn-primary flex-1 flex items-center justify-center space-x-2 text-sm font-semibold py-3 relative overflow-hidden group"
+                        >
+                          <div className="absolute inset-0 bg-gradient-to-r from-luxury-cyan via-luxury-brightBlue to-luxury-cyan opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                          {recoveryLoading ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin relative z-10" />
+                              <span className="relative z-10">Enviando...</span>
+                            </>
+                          ) : (
+                            <span className="relative z-10">Enviar Contraseña Temporal</span>
+                          )}
+                        </motion.button>
+                        <motion.button
+                          type="button"
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => {
+                            setRecoveryStep('select')
+                            setRecoveryEmail('')
+                            setRecoveryError('')
+                            setTemporaryPassword('')
+                            setPasswordCopied(false)
+                          }}
+                          className="px-4 py-3 rounded-lg border border-gray-600 text-gray-300 hover:bg-gray-700/50 transition-colors"
+                        >
+                          <ArrowLeft className="w-4 h-4" />
+                        </motion.button>
+                      </div>
+                    </motion.form>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
       {/* License Alert */}
       <CustomAlert
@@ -282,7 +980,7 @@ export default function Login() {
                     rel="noopener noreferrer"
                     className="flex items-center space-x-2 text-sm text-gray-300 hover:text-luxury-gold transition-colors group"
                   >
-                    <MessageCircle className="w-4 h-4 text-green-500 group-hover:text-green-400 transition-colors" />
+                    <FaWhatsapp className="w-4 h-4 text-green-500 group-hover:text-green-400 transition-colors" />
                     <span className="font-medium">{contact.name}</span>
                   </a>
                 ))}
@@ -314,7 +1012,7 @@ export default function Login() {
                     rel="noopener noreferrer"
                     className="flex items-center space-x-2 text-sm text-gray-300 hover:text-luxury-gold transition-colors group"
                   >
-                    <MessageCircle className="w-4 h-4 text-green-500 group-hover:text-green-400 transition-colors" />
+                    <FaWhatsapp className="w-4 h-4 text-green-500 group-hover:text-green-400 transition-colors" />
                     <span className="font-medium">{contact.name}</span>
                   </a>
                 ))}

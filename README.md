@@ -93,7 +93,15 @@ VITE_SUPABASE_ANON_KEY=tu_anon_key_aqui
 # WhatsApp Business API (Meta)
 VITE_META_API_TOKEN=tu_token_de_meta
 VITE_META_PHONE_NUMBER_ID=tu_phone_number_id
+
+# Resend Email Service (para recuperación de contraseña/usuario)
+# Obtén tu API key en: https://resend.com/api-keys
+VITE_RESEND_API_KEY=re_tu_api_key_de_resend
+# VITE_FROM_EMAIL es opcional, por defecto usa onboarding@resend.dev (email de prueba)
+# VITE_FROM_EMAIL=onboarding@resend.dev
 ```
+
+> **Nota**: Para más detalles sobre la configuración de email, consulta [EMAIL_SETUP.md](./EMAIL_SETUP.md)
 
 ### 4. Ejecutar en Desarrollo
 

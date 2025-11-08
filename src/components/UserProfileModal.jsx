@@ -12,18 +12,31 @@ import {
   Zap,
   CheckCircle,
   XCircle,
-  LogOut
+  LogOut,
+  Eye,
+  EyeOff,
+  Loader2
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 
 export default function UserProfileModal({ isOpen, onClose }) {
-  const { profile, signOut } = useAuth()
+  const { profile, signOut, changePassword } = useAuth()
   const [licenseStatus, setLicenseStatus] = useState({
     hasLicense: false,
     license: null,
     loading: true
   })
+  const [showChangePassword, setShowChangePassword] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [passwordError, setPasswordError] = useState('')
+  const [passwordSuccess, setPasswordSuccess] = useState('')
+  const [passwordLoading, setPasswordLoading] = useState(false)
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   // Fetch license status
   useEffect(() => {
     const fetchLicenseStatus = async () => {
@@ -110,6 +123,45 @@ export default function UserProfileModal({ isOpen, onClose }) {
   const handleLogout = async () => {
     await signOut()
     window.location.href = '/login'
+  }
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault()
+    setPasswordError('')
+    setPasswordSuccess('')
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Las contraseñas no coinciden')
+      return
+    }
+
+    if (newPassword.length < 6) {
+      setPasswordError('La contraseña debe tener al menos 6 caracteres')
+      return
+    }
+
+    setPasswordLoading(true)
+
+    try {
+      const result = await changePassword(currentPassword, newPassword)
+      
+      if (result.success) {
+        setPasswordSuccess('Contraseña actualizada exitosamente')
+        setCurrentPassword('')
+        setNewPassword('')
+        setConfirmPassword('')
+        setTimeout(() => {
+          setShowChangePassword(false)
+          setPasswordSuccess('')
+        }, 2000)
+      } else {
+        setPasswordError(result.message || 'Error al cambiar la contraseña')
+      }
+    } catch (error) {
+      setPasswordError('Error al cambiar la contraseña. Por favor, intente nuevamente.')
+    } finally {
+      setPasswordLoading(false)
+    }
   }
 
   return (
@@ -337,6 +389,162 @@ export default function UserProfileModal({ isOpen, onClose }) {
                     </div>
                   )}
                 </div>
+              </div>
+
+              {/* Sección de Cambiar Contraseña */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-heading font-semibold text-luxury-white flex items-center space-x-2">
+                    <Key className="w-5 h-5 text-luxury-raspberry" />
+                    <span>Seguridad</span>
+                  </h3>
+                  {!showChangePassword && (
+                    <motion.button
+                      onClick={() => {
+                        setShowChangePassword(true)
+                        setPasswordError('')
+                        setPasswordSuccess('')
+                      }}
+                      className="px-4 py-2 rounded-lg border border-luxury-raspberry/50 bg-luxury-raspberry/10 text-luxury-raspberry hover:bg-luxury-raspberry/20 transition-all text-sm font-semibold"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      Cambiar Contraseña
+                    </motion.button>
+                  )}
+                </div>
+
+                {showChangePassword && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="p-5 rounded-xl border border-luxury-lightGray/30 bg-luxury-gray/30"
+                  >
+                    {passwordError && (
+                      <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30">
+                        <p className="text-red-400 text-sm">{passwordError}</p>
+                      </div>
+                    )}
+
+                    {passwordSuccess && (
+                      <div className="mb-4 p-3 rounded-lg bg-green-500/10 border border-green-500/30">
+                        <p className="text-green-400 text-sm">{passwordSuccess}</p>
+                      </div>
+                    )}
+
+                    <form onSubmit={handleChangePassword} className="space-y-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-300 mb-2">
+                          Contraseña Actual
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={showCurrentPassword ? 'text' : 'password'}
+                            value={currentPassword}
+                            onChange={(e) => setCurrentPassword(e.target.value)}
+                            className="w-full pl-4 pr-10 py-2.5 bg-luxury-darkGray border border-luxury-lightGray/30 rounded-lg text-luxury-white placeholder-gray-500 focus:border-luxury-raspberry focus:outline-none transition-all text-sm"
+                            placeholder="Ingresa tu contraseña actual"
+                            required
+                            disabled={passwordLoading}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-luxury-white transition-colors"
+                          >
+                            {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-300 mb-2">
+                          Nueva Contraseña
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={showNewPassword ? 'text' : 'password'}
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            className="w-full pl-4 pr-10 py-2.5 bg-luxury-darkGray border border-luxury-lightGray/30 rounded-lg text-luxury-white placeholder-gray-500 focus:border-luxury-raspberry focus:outline-none transition-all text-sm"
+                            placeholder="Nueva contraseña (mín. 6 caracteres)"
+                            required
+                            disabled={passwordLoading}
+                            minLength={6}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowNewPassword(!showNewPassword)}
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-luxury-white transition-colors"
+                          >
+                            {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-300 mb-2">
+                          Confirmar Nueva Contraseña
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={showConfirmPassword ? 'text' : 'password'}
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            className="w-full pl-4 pr-10 py-2.5 bg-luxury-darkGray border border-luxury-lightGray/30 rounded-lg text-luxury-white placeholder-gray-500 focus:border-luxury-raspberry focus:outline-none transition-all text-sm"
+                            placeholder="Confirma tu nueva contraseña"
+                            required
+                            disabled={passwordLoading}
+                            minLength={6}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-luxury-white transition-colors"
+                          >
+                            {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-3">
+                        <motion.button
+                          type="submit"
+                          disabled={passwordLoading}
+                          className="flex-1 px-4 py-2.5 rounded-lg bg-luxury-raspberry text-white font-semibold hover:bg-luxury-raspberryDark transition-all text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                          whileHover={{ scale: passwordLoading ? 1 : 1.02 }}
+                          whileTap={{ scale: passwordLoading ? 1 : 0.98 }}
+                        >
+                          {passwordLoading ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              <span>Actualizando...</span>
+                            </>
+                          ) : (
+                            <span>Actualizar Contraseña</span>
+                          )}
+                        </motion.button>
+                        <motion.button
+                          type="button"
+                          onClick={() => {
+                            setShowChangePassword(false)
+                            setCurrentPassword('')
+                            setNewPassword('')
+                            setConfirmPassword('')
+                            setPasswordError('')
+                            setPasswordSuccess('')
+                          }}
+                          className="px-4 py-2.5 rounded-lg border border-luxury-lightGray/30 text-gray-300 hover:bg-luxury-gray/50 transition-all text-sm"
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                        >
+                          Cancelar
+                        </motion.button>
+                      </div>
+                    </form>
+                  </motion.div>
+                )}
               </div>
 
               {/* Footer */}

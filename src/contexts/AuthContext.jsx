@@ -1,6 +1,12 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import * as bcrypt from 'bcryptjs'
+import { 
+  sendUsernameEmail, 
+  sendTemporaryPasswordEmail, 
+  sendPasswordChangeConfirmation,
+  generateTemporaryPassword 
+} from '../lib/emailService'
 
 const AuthContext = createContext({})
 
@@ -387,6 +393,233 @@ export const AuthProvider = ({ children }) => {
     return roles[requiredRole]?.includes(profile.role) ?? false
   }
 
+  // Función para buscar usuario por email o username
+  const findUserByEmailOrUsername = async (emailOrUsername) => {
+    try {
+      const searchTerm = emailOrUsername.trim().toLowerCase()
+      
+      // Buscar por email
+      const { data: usersByEmail, error: emailError } = await supabase
+        .from('profiles')
+        .select('id, username, email, full_name')
+        .ilike('email', `%${searchTerm}%`)
+        .limit(1)
+
+      if (emailError) {
+        console.error('Error buscando por email:', emailError)
+      }
+
+      if (usersByEmail && usersByEmail.length > 0) {
+        return { 
+          success: true, 
+          user: usersByEmail[0],
+          foundBy: 'email'
+        }
+      }
+
+      // Buscar por username
+      const { data: usersByUsername, error: usernameError } = await supabase
+        .from('profiles')
+        .select('id, username, email, full_name')
+        .ilike('username', searchTerm)
+        .limit(1)
+
+      if (usernameError) {
+        console.error('Error buscando por username:', usernameError)
+      }
+
+      if (usersByUsername && usersByUsername.length > 0) {
+        return { 
+          success: true, 
+          user: usersByUsername[0],
+          foundBy: 'username'
+        }
+      }
+
+      return { success: false, message: 'Usuario no encontrado' }
+    } catch (error) {
+      console.error('Error en findUserByEmailOrUsername:', error)
+      return { success: false, message: 'Error al buscar usuario' }
+    }
+  }
+
+  // Función para resetear contraseña
+  const resetPassword = async (userId, newPassword) => {
+    try {
+      // Hashear la nueva contraseña
+      const saltRounds = 10
+      const passwordHash = await bcrypt.hash(newPassword, saltRounds)
+
+      // Actualizar la contraseña en la base de datos
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({ password_hash: passwordHash })
+        .eq('id', userId)
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error actualizando contraseña:', error)
+        return { success: false, message: 'Error al actualizar la contraseña' }
+      }
+
+      return { success: true, message: 'Contraseña actualizada exitosamente' }
+    } catch (error) {
+      console.error('Error en resetPassword:', error)
+      return { success: false, message: 'Error al resetear la contraseña' }
+    }
+  }
+
+  // Función para recuperar username (envía correo con el username)
+  const recoverUsername = async (email) => {
+    try {
+      const searchTerm = email.trim().toLowerCase()
+      
+      // Buscar usuario por email
+      const { data: users, error } = await supabase
+        .from('profiles')
+        .select('id, username, email, full_name')
+        .ilike('email', searchTerm)
+        .limit(1)
+
+      if (error) {
+        console.error('Error buscando usuario:', error)
+        return { success: false, message: 'Error al buscar usuario' }
+      }
+
+      if (!users || users.length === 0) {
+        return { success: false, message: 'No se encontró ningún usuario con ese email' }
+      }
+
+      const user = users[0]
+
+      // Enviar correo con el username
+      const emailResult = await sendUsernameEmail(user.email, user.username, user.full_name)
+
+      if (!emailResult.success && !emailResult.fallback) {
+        return { 
+          success: false, 
+          message: 'Error al enviar el correo. Por favor, contacta al administrador.' 
+        }
+      }
+
+      return { 
+        success: true, 
+        message: emailResult.fallback 
+          ? 'Se abrió tu cliente de correo. Revisa tu correo electrónico para ver tu nombre de usuario.'
+          : 'Se ha enviado un correo con tu nombre de usuario a tu dirección de email.',
+        fallback: emailResult.fallback
+      }
+    } catch (error) {
+      console.error('Error en recoverUsername:', error)
+      return { success: false, message: 'Error al recuperar el usuario' }
+    }
+  }
+
+  // Función para recuperar contraseña (genera temporal y envía por correo)
+  const recoverPassword = async (emailOrUsername) => {
+    try {
+      const result = await findUserByEmailOrUsername(emailOrUsername)
+      
+      if (!result.success) {
+        return { success: false, message: result.message || 'Usuario no encontrado' }
+      }
+
+      const user = result.user
+
+      // Generar contraseña temporal
+      const temporaryPassword = generateTemporaryPassword()
+
+      // Hashear la contraseña temporal
+      const saltRounds = 10
+      const passwordHash = await bcrypt.hash(temporaryPassword, saltRounds)
+
+      // Actualizar la contraseña en la base de datos
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ password_hash: passwordHash })
+        .eq('id', user.id)
+
+      if (updateError) {
+        console.error('Error actualizando contraseña temporal:', updateError)
+        return { success: false, message: 'Error al generar la contraseña temporal' }
+      }
+
+      // Enviar correo con la contraseña temporal
+      const emailResult = await sendTemporaryPasswordEmail(user.email, temporaryPassword, user.full_name)
+
+      if (!emailResult.success && !emailResult.fallback) {
+        // Si falla el envío, revertir el cambio de contraseña
+        return { 
+          success: false, 
+          message: 'Error al enviar el correo. Por favor, contacta al administrador.' 
+        }
+      }
+
+      return { 
+        success: true, 
+        message: emailResult.fallback
+          ? 'Se abrió tu cliente de correo. Revisa tu correo electrónico para ver tu contraseña temporal.'
+          : 'Se ha enviado una contraseña temporal a tu correo electrónico. Por favor, cámbiala después de iniciar sesión.',
+        fallback: emailResult.fallback,
+        temporaryPassword: emailResult.fallback ? temporaryPassword : undefined
+      }
+    } catch (error) {
+      console.error('Error en recoverPassword:', error)
+      return { success: false, message: 'Error al recuperar la contraseña' }
+    }
+  }
+
+  // Función para cambiar contraseña (requiere contraseña actual)
+  const changePassword = async (currentPassword, newPassword) => {
+    try {
+      if (!profile) {
+        return { success: false, message: 'Usuario no autenticado' }
+      }
+
+      // Verificar contraseña actual
+      const passwordValid = await bcrypt.compare(currentPassword, profile.password_hash)
+
+      if (!passwordValid) {
+        return { success: false, message: 'La contraseña actual es incorrecta' }
+      }
+
+      // Validar nueva contraseña
+      if (newPassword.length < 6) {
+        return { success: false, message: 'La nueva contraseña debe tener al menos 6 caracteres' }
+      }
+
+      // Hashear la nueva contraseña
+      const saltRounds = 10
+      const passwordHash = await bcrypt.hash(newPassword, saltRounds)
+
+      // Actualizar la contraseña
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({ password_hash: passwordHash })
+        .eq('id', profile.id)
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error actualizando contraseña:', error)
+        return { success: false, message: 'Error al actualizar la contraseña' }
+      }
+
+      // Actualizar el perfil en el contexto
+      setProfile(data)
+      localStorage.setItem('piker_profile', JSON.stringify(data))
+
+      // Enviar correo de confirmación
+      await sendPasswordChangeConfirmation(profile.email, profile.full_name)
+
+      return { success: true, message: 'Contraseña actualizada exitosamente' }
+    } catch (error) {
+      console.error('Error en changePassword:', error)
+      return { success: false, message: 'Error al cambiar la contraseña' }
+    }
+  }
+
   const value = {
     user,
     profile,
@@ -398,6 +631,11 @@ export const AuthProvider = ({ children }) => {
     isUser: hasRole('user'),
     isAdmin: hasRole('admin'),
     isSystemAdmin: hasRole('system_admin'),
+    findUserByEmailOrUsername,
+    resetPassword,
+    recoverUsername,
+    recoverPassword,
+    changePassword,
   }
 
   return (
