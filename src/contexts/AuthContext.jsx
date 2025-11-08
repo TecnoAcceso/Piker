@@ -548,21 +548,19 @@ export const AuthProvider = ({ children }) => {
       // Enviar correo con la contraseña temporal
       const emailResult = await sendTemporaryPasswordEmail(user.email, temporaryPassword, user.full_name)
 
-      if (!emailResult.success && !emailResult.fallback) {
+      if (!emailResult.success) {
         // Si falla el envío, revertir el cambio de contraseña
+        // Obtener la contraseña anterior (si existe) o dejar vacío para que el usuario use recuperación
+        // Por seguridad, mejor dejar que contacte al administrador
         return { 
           success: false, 
-          message: 'Error al enviar el correo. Por favor, contacta al administrador.' 
+          message: emailResult.error || 'Error al enviar el correo. Por favor, contacta al administrador.' 
         }
       }
 
       return { 
         success: true, 
-        message: emailResult.fallback
-          ? 'Se abrió tu cliente de correo. Revisa tu correo electrónico para ver tu contraseña temporal.'
-          : 'Se ha enviado una contraseña temporal a tu correo electrónico. Por favor, cámbiala después de iniciar sesión.',
-        fallback: emailResult.fallback,
-        temporaryPassword: emailResult.fallback ? temporaryPassword : undefined
+        message: 'Se ha enviado una contraseña temporal a tu correo electrónico. Por favor, cámbiala después de iniciar sesión.'
       }
     } catch (error) {
       console.error('Error en recoverPassword:', error)

@@ -1,74 +1,40 @@
 # Configuración de Supabase Edge Function para Envío de Correos
 
-## Pasos para Desplegar la Edge Function
+## Función Existente
 
-### 1. Instalar Supabase CLI (si no lo tienes)
+El proyecto usa la función Edge Function existente: **`clever-endpoint`**
 
-```bash
-# Windows (con Scoop)
-scoop bucket add supabase https://github.com/supabase/scoop-bucket.git
-scoop install supabase
+URL: `https://jsnctapwgxjjcagzccnt.supabase.co/functions/v1/clever-endpoint`
 
-# O con npm
-npm install -g supabase
-```
+## Configuración Requerida
 
-### 2. Inicializar Supabase en el proyecto (si no está inicializado)
+### Variables de Entorno en Supabase
 
-```bash
-supabase init
-```
-
-### 3. Login en Supabase
-
-```bash
-supabase login
-```
-
-### 4. Vincular tu proyecto
-
-```bash
-supabase link --project-ref tu-project-ref
-```
-
-Puedes encontrar tu project-ref en la URL de tu proyecto Supabase:
-`https://supabase.com/dashboard/project/[PROJECT_REF]`
-
-### 5. Configurar Variables de Entorno en Supabase
+La función `clever-endpoint` debe tener configurados los siguientes secrets:
 
 En el dashboard de Supabase:
 1. Ve a **Settings** → **Edge Functions** → **Secrets**
-2. Agrega los siguientes secrets:
+2. Verifica/Agrega los siguientes secrets:
    - `RESEND_API_KEY` = `re_6sJcaqw5_247Hx7uHEJvGCyQBA2a4Z5PN`
    - `FROM_EMAIL` = `onboarding@resend.dev`
 
-### 6. Desplegar la Edge Function
+## Formato de Datos Esperado
 
-```bash
-supabase functions deploy send-email
-```
+La función `clever-endpoint` debe aceptar el siguiente formato:
 
-### 7. Verificar el Deployment
-
-Después del deploy, deberías ver un mensaje como:
-```
-Deployed Function send-email
-```
-
-## Estructura de Archivos
-
-La Edge Function está en:
-```
-supabase/
-└── functions/
-    └── send-email/
-        └── index.ts
+```json
+{
+  "to": "email@ejemplo.com",
+  "subject": "Asunto del correo",
+  "html": "<h1>Contenido HTML</h1>",
+  "text": "Contenido de texto plano"
+}
 ```
 
 ## Prueba Manual
 
 Puedes probar la función desde el dashboard de Supabase:
-1. Ve a **Edge Functions** → **send-email**
+1. Ve a **Edge Functions** → **clever-endpoint**
 2. Click en **Invoke Function**
 3. Usa este JSON de prueba:
 
@@ -84,7 +50,7 @@ Puedes probar la función desde el dashboard de Supabase:
 ## Solución de Problemas
 
 ### Error: "Function not found"
-- Asegúrate de haber desplegado la función: `supabase functions deploy send-email`
+- Verifica que la función `clever-endpoint` esté desplegada en Supabase
 - Verifica que estés usando el project-ref correcto
 
 ### Error: "RESEND_API_KEY not found"
@@ -92,15 +58,12 @@ Puedes probar la función desde el dashboard de Supabase:
 - Los secrets deben estar en **Settings** → **Edge Functions** → **Secrets**
 
 ### Error de CORS
-- La Edge Function ya incluye headers CORS
-- Si persiste, verifica que la función esté desplegada correctamente
+- La función debe incluir headers CORS apropiados
+- Verifica que la función esté desplegada correctamente
 
-## Alternativa: Usar Supabase Dashboard
+## Nota sobre la Función Existente
 
-Si prefieres no usar CLI, puedes:
-1. Ve a **Edge Functions** en el dashboard de Supabase
-2. Click en **Create Function**
-3. Nombre: `send-email`
-4. Copia el contenido de `supabase/functions/send-email/index.ts`
-5. Agrega los secrets como se indica arriba
+Si la función `clever-endpoint` no acepta el formato esperado o necesita modificaciones, puedes:
+1. Actualizar la función en Supabase Dashboard
+2. O crear una nueva función `send-email` usando el código en `supabase/functions/send-email/index.ts`
 

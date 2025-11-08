@@ -28,7 +28,7 @@ export const generateTemporaryPassword = () => {
  */
 const sendEmailViaResend = async (to, subject, htmlContent, textContent) => {
   try {
-    const { data, error } = await supabase.functions.invoke('send-email', {
+    const { data, error } = await supabase.functions.invoke('clever-endpoint', {
       body: {
         to: to,
         subject: subject,
@@ -114,14 +114,15 @@ Equipo Piker`
 
     const result = await sendEmailViaResend(email, subject, htmlContent, textContent)
     
-    if (!result.success && result.useFallback) {
-      return await sendEmailFallback(email, 'username_recovery', { username, fullName })
+    if (!result.success) {
+      // NO usar fallback - retornar error directamente
+      return { success: false, error: result.error || 'Error al enviar el correo. Por favor, contacta al administrador.' }
     }
 
     return result
   } catch (error) {
     console.error('Error en sendUsernameEmail:', error)
-    return await sendEmailFallback(email, 'username_recovery', { username, fullName })
+    return { success: false, error: 'Error al enviar el correo. Por favor, contacta al administrador.' }
   }
 }
 
@@ -191,69 +192,15 @@ Equipo Piker`
 
     const result = await sendEmailViaResend(email, subject, htmlContent, textContent)
     
-    if (!result.success && result.useFallback) {
-      return await sendEmailFallback(email, 'password_recovery', { temporaryPassword, fullName })
+    if (!result.success) {
+      // NO usar fallback - retornar error directamente
+      return { success: false, error: result.error || 'Error al enviar el correo. Por favor, contacta al administrador.' }
     }
 
     return result
   } catch (error) {
     console.error('Error en sendTemporaryPasswordEmail:', error)
-    return await sendEmailFallback(email, 'password_recovery', { temporaryPassword, fullName })
-  }
-}
-
-/**
- * Método alternativo usando mailto (fallback)
- * Nota: Esto solo funciona si el usuario tiene un cliente de correo configurado
- */
-const sendEmailFallback = async (email, type, data) => {
-  try {
-    let subject = ''
-    let body = ''
-
-    if (type === 'username_recovery') {
-      subject = 'Recuperación de Usuario - Piker'
-      body = `Hola ${data.fullName || 'Usuario'},
-
-Tu nombre de usuario en Piker es: ${data.username}
-
-Si no solicitaste esta recuperación, por favor ignora este mensaje.
-
-Saludos,
-Equipo Piker`
-    } else if (type === 'password_recovery') {
-      subject = 'Contraseña Temporal - Piker'
-      body = `Hola ${data.fullName || 'Usuario'},
-
-Se ha generado una contraseña temporal para tu cuenta en Piker:
-
-Contraseña temporal: ${data.temporaryPassword}
-
-IMPORTANTE: Por seguridad, cambia esta contraseña inmediatamente después de iniciar sesión.
-
-Si no solicitaste esta recuperación, por favor contacta al administrador inmediatamente.
-
-Saludos,
-Equipo Piker`
-    }
-
-    // Crear enlace mailto como fallback
-    const mailtoLink = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
-    
-    // Intentar abrir el cliente de correo
-    window.open(mailtoLink)
-    
-    return { 
-      success: true, 
-      message: 'Se abrió tu cliente de correo. Por favor, envía el correo manualmente.',
-      fallback: true,
-      // Incluir datos importantes para mostrar en pantalla
-      data: type === 'password_recovery' ? { temporaryPassword: data.temporaryPassword } : 
-            type === 'username_recovery' ? { username: data.username } : null
-    }
-  } catch (error) {
-    console.error('Error en sendEmailFallback:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: 'Error al enviar el correo. Por favor, contacta al administrador.' }
   }
 }
 

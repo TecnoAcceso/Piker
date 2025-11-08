@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { User, Lock, Loader2, Shield, Eye, EyeOff, ArrowLeft, ShoppingCart, Key, Mail, Copy, Check } from 'lucide-react'
+import { User, Lock, Loader2, Shield, Eye, EyeOff, ArrowLeft, ShoppingCart, Key, Mail } from 'lucide-react'
 import { FaWhatsapp } from 'react-icons/fa'
 import { useAuth } from '../contexts/AuthContext'
 import CustomAlert from '../components/CustomAlert'
@@ -22,8 +22,6 @@ export default function Login() {
   const [recoveryLoading, setRecoveryLoading] = useState(false)
   const [recoveryError, setRecoveryError] = useState('')
   const [recoverySuccess, setRecoverySuccess] = useState('')
-  const [temporaryPassword, setTemporaryPassword] = useState('')
-  const [passwordCopied, setPasswordCopied] = useState(false)
   const { signIn, recoverUsername, recoverPassword } = useAuth()
   const navigate = useNavigate()
 
@@ -42,18 +40,6 @@ export default function Login() {
       recovery: 'Hola, necesito ayuda para recuperar mi contraseña o usuario en la aplicación Piker. ¿Podrían ayudarme?'
     }
     return encodeURIComponent(messages[alertType] || 'Hola, necesito ayuda con mi cuenta en la aplicación Piker.')
-  }
-
-  const handleCopyPassword = async () => {
-    if (temporaryPassword) {
-      try {
-        await navigator.clipboard.writeText(temporaryPassword)
-        setPasswordCopied(true)
-        setTimeout(() => setPasswordCopied(false), 2000)
-      } catch (error) {
-        console.error('Error al copiar:', error)
-      }
-    }
   }
 
   const handleRecoverUsername = async (e) => {
@@ -87,7 +73,6 @@ export default function Login() {
     e.preventDefault()
     setRecoveryError('')
     setRecoverySuccess('')
-    setTemporaryPassword('')
     setRecoveryLoading(true)
 
     try {
@@ -95,17 +80,13 @@ export default function Login() {
       
       if (result.success) {
         setRecoverySuccess(result.message)
-        // Si hay contraseña temporal (fallback), guardarla para mostrarla
-        if (result.temporaryPassword) {
-          setTemporaryPassword(result.temporaryPassword)
-        }
+        // NO mostrar contraseña temporal en el modal - solo se envía por correo
         setTimeout(() => {
           setShowRecovery(false)
           setShowLoginForm(true)
-          setRecoveryStep('select')
-          setRecoveryEmail('')
-          setTemporaryPassword('')
-        }, result.fallback ? 10000 : 3000) // Más tiempo si es fallback para que puedan copiar
+        setRecoveryStep('select')
+        setRecoveryEmail('')
+      }, 3000)
       } else {
         setRecoveryError(result.message || 'Error al recuperar la contraseña')
       }
@@ -680,8 +661,6 @@ export default function Login() {
                     setRecoveryEmail('')
                     setRecoveryError('')
                     setRecoverySuccess('')
-                    setTemporaryPassword('')
-                    setPasswordCopied(false)
                   }}
                   className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors group"
                   aria-label="Volver"
@@ -745,37 +724,6 @@ export default function Login() {
                     </motion.div>
                   )}
 
-                  {temporaryPassword && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      className="bg-yellow-500/10 border-2 border-yellow-500/50 rounded-xl p-4 mb-4 backdrop-blur-sm"
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <p className="text-yellow-400 text-sm font-semibold">Contraseña Temporal:</p>
-                        <motion.button
-                          onClick={handleCopyPassword}
-                          className="p-1.5 rounded-lg bg-yellow-500/20 hover:bg-yellow-500/30 transition-colors"
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                        >
-                          {passwordCopied ? (
-                            <Check className="w-4 h-4 text-green-400" />
-                          ) : (
-                            <Copy className="w-4 h-4 text-yellow-400" />
-                          )}
-                        </motion.button>
-                      </div>
-                      <div className="bg-black/30 rounded-lg p-3 border border-yellow-500/30">
-                        <p className="text-yellow-300 text-xl font-mono font-bold text-center tracking-wider select-all">
-                          {temporaryPassword}
-                        </p>
-                      </div>
-                      <p className="text-yellow-400/70 text-xs mt-2 text-center">
-                        ⚠️ Por seguridad, cambia esta contraseña después de iniciar sesión
-                      </p>
-                    </motion.div>
-                  )}
 
                   {recoveryStep === 'select' && (
                     <motion.div
