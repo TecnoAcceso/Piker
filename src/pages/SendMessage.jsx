@@ -968,13 +968,43 @@ export default function SendMessage() {
                       placeholder="04245939950"
                     />
                   </div>
-                  <button
+                  <motion.button
+                    whileHover={{ scale: 1.02, y: -2 }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={handleAddPhone}
-                    className="btn-primary flex items-center space-x-1 px-3 py-2 text-sm"
+                    className="relative px-3.5 py-2 rounded-lg flex items-center gap-1.5 overflow-hidden group"
+                    style={{
+                      background: 'linear-gradient(135deg, #E4003B 0%, #C7003A 50%, #E4003B 100%)',
+                      backgroundSize: '200% 100%',
+                      boxShadow: '0 4px 20px rgba(228, 0, 59, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1) inset, 0 1px 0 0 rgba(255, 255, 255, 0.2) inset',
+                    }}
                   >
-                    <Plus className="w-4 h-4" />
-                    <span>Agregar</span>
-                  </button>
+                    {/* Efecto de brillo superior */}
+                    <div className="absolute inset-0 bg-gradient-to-b from-white/30 via-transparent to-transparent opacity-50"></div>
+
+                    {/* Efecto shimmer animado */}
+                    <motion.div
+                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent"
+                      animate={{ x: ['-100%', '200%'] }}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        repeatDelay: 3,
+                        ease: "easeInOut"
+                      }}
+                    />
+
+                    {/* Resplandor hover */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-luxury-raspberryLight/0 via-luxury-raspberryLight/20 to-luxury-raspberryLight/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+
+                    {/* Contenido */}
+                    <div className="relative z-10 flex items-center gap-1.5">
+                      <Plus className="w-3.5 h-3.5 text-white" strokeWidth={2.5} />
+                      <span className="text-xs font-bold text-white tracking-wide uppercase" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
+                        Agregar
+                      </span>
+                    </div>
+                  </motion.button>
                 </div>
 
                 <button

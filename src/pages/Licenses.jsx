@@ -417,13 +417,46 @@ export default function Licenses() {
             </p>
           </div>
           <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            whileHover={{ scale: 1.02, y: -2 }}
+            whileTap={{ scale: 0.98 }}
             onClick={handleNewLicense}
-            className="btn-primary flex items-center space-x-2"
+            className="relative px-3.5 py-2 rounded-lg flex items-center gap-1.5 overflow-hidden group"
+            style={{
+              background: 'linear-gradient(135deg, #E4003B 0%, #C7003A 50%, #E4003B 100%)',
+              backgroundSize: '200% 100%',
+              boxShadow: '0 4px 20px rgba(228, 0, 59, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1) inset, 0 1px 0 0 rgba(255, 255, 255, 0.2) inset',
+            }}
           >
-            <Plus className="w-5 h-5" />
-            <span>Nueva Licencia</span>
+            {/* Efecto de brillo superior */}
+            <div className="absolute inset-0 bg-gradient-to-b from-white/30 via-transparent to-transparent opacity-50"></div>
+
+            {/* Efecto shimmer animado */}
+            <motion.div
+              className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent"
+              animate={{
+                x: ['-100%', '200%']
+              }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                repeatDelay: 3,
+                ease: "easeInOut"
+              }}
+            />
+
+            {/* Resplandor hover */}
+            <div className="absolute inset-0 bg-gradient-to-r from-luxury-raspberryLight/0 via-luxury-raspberryLight/20 to-luxury-raspberryLight/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+
+            {/* Contenido */}
+            <div className="relative z-10 flex items-center gap-1.5">
+              <div className="relative">
+                <Key className="w-3.5 h-3.5 text-white" strokeWidth={2.5} />
+                <Plus className="w-2.5 h-2.5 text-white absolute -top-1 -right-1" strokeWidth={3} />
+              </div>
+              <span className="text-xs font-bold text-white tracking-wide uppercase" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
+                Nueva Licencia
+              </span>
+            </div>
           </motion.button>
         </div>
 

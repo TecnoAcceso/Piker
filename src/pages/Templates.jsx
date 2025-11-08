@@ -158,13 +158,46 @@ export default function Templates() {
             </p>
           </div>
           <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            whileHover={{ scale: 1.02, y: -2 }}
+            whileTap={{ scale: 0.98 }}
             onClick={() => setShowModal(true)}
-            className="btn-primary flex items-center space-x-1 px-3 py-2 text-sm"
+            className="relative px-3.5 py-2 rounded-lg flex items-center gap-1.5 overflow-hidden group"
+            style={{
+              background: 'linear-gradient(135deg, #E4003B 0%, #C7003A 50%, #E4003B 100%)',
+              backgroundSize: '200% 100%',
+              boxShadow: '0 4px 20px rgba(228, 0, 59, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1) inset, 0 1px 0 0 rgba(255, 255, 255, 0.2) inset',
+            }}
           >
-            <Plus className="w-4 h-4" />
-            <span>Nueva</span>
+            {/* Efecto de brillo superior */}
+            <div className="absolute inset-0 bg-gradient-to-b from-white/30 via-transparent to-transparent opacity-50"></div>
+
+            {/* Efecto shimmer animado */}
+            <motion.div
+              className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent"
+              animate={{
+                x: ['-100%', '200%']
+              }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                repeatDelay: 3,
+                ease: "easeInOut"
+              }}
+            />
+
+            {/* Resplandor hover */}
+            <div className="absolute inset-0 bg-gradient-to-r from-luxury-raspberryLight/0 via-luxury-raspberryLight/20 to-luxury-raspberryLight/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+
+            {/* Contenido */}
+            <div className="relative z-10 flex items-center gap-1.5">
+              <div className="relative">
+                <FileText className="w-3.5 h-3.5 text-white" strokeWidth={2.5} />
+                <Plus className="w-2.5 h-2.5 text-white absolute -top-1 -right-1" strokeWidth={3} />
+              </div>
+              <span className="text-xs font-bold text-white tracking-wide uppercase" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
+                Nueva Plantilla
+              </span>
+            </div>
           </motion.button>
         </div>
 
@@ -201,36 +234,52 @@ export default function Templates() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
-                className="card-luxury p-4"
+                className="card-luxury p-3 hover:shadow-glow-raspberry transition-all duration-300"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(51, 65, 85, 0.5) 100%)',
+                  borderColor: 'rgba(228, 0, 59, 0.3)'
+                }}
               >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1">
-                    <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium border ${getTypeColor(template.template_type)} mb-1.5`}>
-                      {templateTypes.find(t => t.value === template.template_type)?.label}
-                    </span>
-                    <h3 className="text-base font-semibold text-luxury-white">
-                      {template.template_name}
-                    </h3>
-                  </div>
+                {/* Fila 1: Tipo de plantilla | Nombre */}
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <span className={`inline-block px-1.5 py-0.5 rounded-full text-[9px] font-bold border ${getTypeColor(template.template_type)} whitespace-nowrap`}>
+                    {templateTypes.find(t => t.value === template.template_type)?.label}
+                  </span>
+                  <h3 className="text-xs font-bold text-white truncate flex-1 text-right">
+                    {template.template_name}
+                  </h3>
                 </div>
-                <p className="text-gray-400 text-xs mb-3 line-clamp-2">
+
+                {/* Contenido */}
+                <p className="text-[10px] text-gray-400 mb-2 line-clamp-2 leading-relaxed">
                   {template.template_content}
                 </p>
-                <div className="flex items-center space-x-2">
-                  <button
+
+                {/* Botones de acción */}
+                <div className="flex items-center gap-1">
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                     onClick={() => handleEdit(template)}
-                    className="flex-1 flex items-center justify-center space-x-1 px-3 py-1.5 bg-luxury-gold/10 text-luxury-gold rounded-lg hover:bg-luxury-gold/20 transition-colors"
+                    className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg transition-all duration-200"
+                    style={{
+                      background: 'rgba(59, 130, 246, 0.1)',
+                      border: '1px solid rgba(59, 130, 246, 0.3)',
+                      color: '#3b82f6'
+                    }}
                   >
-                    <Edit2 className="w-3.5 h-3.5" />
-                    <span className="text-xs">Editar</span>
-                  </button>
-                  <button
+                    <Edit2 className="w-3 h-3" />
+                    <span className="text-[10px] font-semibold">Editar</span>
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                     onClick={() => handleDelete(template.id)}
-                    className="flex-1 flex items-center justify-center space-x-1 px-3 py-1.5 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500/20 transition-colors"
+                    className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-red-500/10 text-red-400 border border-red-500/30 rounded-lg hover:bg-red-500/20 transition-all duration-200"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span className="text-xs">Eliminar</span>
-                  </button>
+                    <Trash2 className="w-3 h-3" />
+                    <span className="text-[10px] font-semibold">Eliminar</span>
+                  </motion.button>
                 </div>
               </motion.div>
             ))}

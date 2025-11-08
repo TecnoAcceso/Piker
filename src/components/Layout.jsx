@@ -203,7 +203,7 @@ export default function Layout({ children }) {
   }
 
   return (
-    <div className="min-h-screen bg-luxury-black flex">
+    <div className="min-h-screen flex" style={{ background: 'linear-gradient(180deg, #1a1f3d 0%, #252b4d 100%)' }}>
       {/* Sidebar */}
       <AnimatePresence>
         {sidebarOpen && (

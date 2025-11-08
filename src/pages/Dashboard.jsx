@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Package, Send, Clock, TrendingUp, FileText, Users, CheckCircle, XCircle, X, List, Calendar } from 'lucide-react'
+import { Package, Send, Clock, TrendingUp, FileText, Users, CheckCircle, XCircle, X, List, Calendar, RotateCcw, Inbox, ArrowRight } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import Layout from '../components/Layout'
 
 export default function Dashboard() {
   const { profile } = useAuth()
+  const navigate = useNavigate()
   const [stats, setStats] = useState({
     totalSent: 0,
     sentToday: 0,
@@ -194,6 +196,43 @@ export default function Dashboard() {
     return `${hours.toString().padStart(2, '0')}:${minutes} ${ampm}`
   }
 
+  // Quick Actions Data
+  const quickActions = [
+    {
+      id: 'received',
+      title: 'Paquetes Recibidos',
+      description: 'Notificar entrega de paquetes',
+      icon: Inbox,
+      path: '/send/received',
+      gradient: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+      glowColor: 'rgba(59, 130, 246, 0.4)',
+      particleColor: '#60a5fa',
+      count: stats.byType?.received || 0
+    },
+    {
+      id: 'reminder',
+      title: 'Recordatorios',
+      description: 'Enviar recordatorios de recogida',
+      icon: Clock,
+      path: '/send/reminder',
+      gradient: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+      glowColor: 'rgba(245, 158, 11, 0.4)',
+      particleColor: '#fbbf24',
+      count: stats.byType?.reminder || 0
+    },
+    {
+      id: 'return',
+      title: 'Devoluciones',
+      description: 'Notificar devoluciones',
+      icon: RotateCcw,
+      path: '/send/return',
+      gradient: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+      glowColor: 'rgba(239, 68, 68, 0.4)',
+      particleColor: '#f87171',
+      count: stats.byType?.return || 0
+    }
+  ]
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -205,6 +244,49 @@ export default function Dashboard() {
           <p className="text-xs text-gray-400">
             Resumen de mensajería
           </p>
+        </div>
+
+        {/* Quick Actions - Compact Premium Buttons */}
+        <div className="flex items-center gap-2">
+          {quickActions.map((action, index) => {
+            const Icon = action.icon
+            return (
+              <motion.button
+                key={action.id}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: index * 0.05 }}
+                whileHover={{ scale: 1.02, y: -1 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => navigate(action.path)}
+                className="relative flex-1 px-2.5 py-2 rounded-lg overflow-hidden group"
+                style={{
+                  background: action.gradient,
+                  boxShadow: `0 2px 12px ${action.glowColor}`,
+                }}
+              >
+                {/* Shimmer Effect */}
+                <motion.div
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+                  animate={{ x: ['-100%', '200%'] }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    repeatDelay: 3,
+                    ease: "easeInOut"
+                  }}
+                />
+
+                {/* Content */}
+                <div className="relative z-10 flex items-center justify-center gap-1.5">
+                  <Icon className="w-3.5 h-3.5 text-white flex-shrink-0" strokeWidth={2.5} />
+                  <span className="text-[10px] font-bold text-white uppercase tracking-wide truncate">
+                    {action.id === 'received' ? 'Recibidos' : action.id === 'reminder' ? 'Recordar' : 'Devolver'}
+                  </span>
+                </div>
+              </motion.button>
+            )
+          })}
         </div>
 
         {/* Stats Grid - 2 Rows, 2 Columns (always) - Ultra Compact */}
