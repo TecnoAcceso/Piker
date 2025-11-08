@@ -3,6 +3,41 @@
  */
 
 /**
+ * Número de WhatsApp Sandbox de Twilio (por defecto)
+ * Este es el número que Twilio proporciona para pruebas en Sandbox
+ */
+const TWILIO_SANDBOX_NUMBER = 'whatsapp:+14155238886'
+
+/**
+ * Detecta si un número es el número de Sandbox de Twilio
+ */
+const isSandboxNumber = (number) => {
+  if (!number) return false
+  const normalized = number.replace(/whatsapp:/gi, '').trim()
+  return normalized === '+14155238886' || normalized === '14155238886'
+}
+
+/**
+ * Obtiene el número "From" correcto según el modo (Sandbox o Producción)
+ */
+const getFromNumber = (fromNumber) => {
+  if (!fromNumber) return TWILIO_SANDBOX_NUMBER
+  
+  // Si el número configurado es el de Sandbox, usarlo directamente
+  if (isSandboxNumber(fromNumber)) {
+    return TWILIO_SANDBOX_NUMBER
+  }
+  
+  // Si ya tiene formato whatsapp:, usarlo tal cual
+  if (fromNumber.startsWith('whatsapp:')) {
+    return fromNumber
+  }
+  
+  // Agregar formato whatsapp: si no lo tiene
+  return `whatsapp:${fromNumber.startsWith('+') ? fromNumber : `+${fromNumber}`}`
+}
+
+/**
  * Envía un mensaje de WhatsApp usando Twilio
  * @param {Object} config - Configuración de Twilio
  * @param {string} config.accountSid - Account SID de Twilio
@@ -27,10 +62,20 @@ export const sendTwilioWhatsApp = async ({
       ? toNumber 
       : `whatsapp:${toNumber.startsWith('+') ? toNumber : `+${toNumber}`}`
 
-    // Asegurar que el número de origen tenga el formato correcto
-    const formattedFrom = fromNumber.startsWith('whatsapp:')
-      ? fromNumber
-      : `whatsapp:${fromNumber.startsWith('+') ? fromNumber : `+${fromNumber}`}`
+    // Obtener el número "From" correcto (Sandbox o Producción)
+    const formattedFrom = getFromNumber(fromNumber)
+    
+    // Detectar si estamos en modo Sandbox
+    const isSandbox = isSandboxNumber(fromNumber)
+
+    console.log('📤 Twilio - Preparando envío:', {
+      from: formattedFrom,
+      to: formattedTo,
+      originalTo: toNumber,
+      originalFrom: fromNumber,
+      isSandbox: isSandbox,
+      hasMessagingService: !!messagingServiceSid
+    })
 
     // Crear FormData para la petición
     const formData = new URLSearchParams()
@@ -38,12 +83,20 @@ export const sendTwilioWhatsApp = async ({
     // Si se proporciona Messaging Service SID, usarlo en lugar de From
     if (messagingServiceSid) {
       formData.append('MessagingServiceSid', messagingServiceSid)
+      console.log('📤 Twilio - Usando Messaging Service SID:', messagingServiceSid)
     } else {
       formData.append('From', formattedFrom)
+      console.log('📤 Twilio - Usando número From:', formattedFrom, isSandbox ? '(Sandbox)' : '(Producción)')
     }
     
     formData.append('To', formattedTo)
     formData.append('Body', message)
+
+    console.log('📤 Twilio - Datos del formulario:', {
+      To: formattedTo,
+      From: messagingServiceSid ? 'MessagingService' : formattedFrom,
+      BodyLength: message.length
+    })
 
     // Crear credenciales Basic Auth
     const credentials = btoa(`${accountSid}:${authToken}`)
@@ -63,15 +116,42 @@ export const sendTwilioWhatsApp = async ({
 
     const responseData = await response.json()
 
+    console.log('📥 Twilio - Respuesta completa:', {
+      status: response.status,
+      statusText: response.statusText,
+      data: responseData
+    })
+
     if (!response.ok) {
-      console.error('Error Twilio API:', responseData)
+      console.error('❌ Error Twilio API:', responseData)
+      
+      // Detectar si es un error de Sandbox (número no verificado)
+      const isSandboxError = responseData.code === 63007 || 
+                            responseData.message?.toLowerCase().includes('sandbox') ||
+                            responseData.message?.toLowerCase().includes('not registered') ||
+                            responseData.message?.toLowerCase().includes('not verified')
+      
+      let errorMessage = responseData.message || 'Error al enviar mensaje'
+      
+      if (isSandboxError) {
+        errorMessage = `Número no verificado en Twilio Sandbox: ${formattedTo}. Debes verificar este número primero enviando el código de Sandbox a WhatsApp.`
+      }
+      
       return {
         success: false,
-        error: responseData.message || 'Error al enviar mensaje',
+        error: errorMessage,
         code: responseData.code,
-        details: responseData
+        details: responseData,
+        isSandboxError
       }
     }
+
+    console.log('✅ Twilio - Mensaje enviado exitosamente:', {
+      sid: responseData.sid,
+      status: responseData.status,
+      to: responseData.to,
+      from: responseData.from
+    })
 
     return {
       success: true,
@@ -80,7 +160,7 @@ export const sendTwilioWhatsApp = async ({
       data: responseData
     }
   } catch (error) {
-    console.error('Error en sendTwilioWhatsApp:', error)
+    console.error('❌ Error en sendTwilioWhatsApp:', error)
     return {
       success: false,
       error: error.message || 'Error al enviar mensaje',
@@ -116,4 +196,3 @@ export const validateTwilioConfig = (config) => {
     errors
   }
 }
-

@@ -549,7 +549,7 @@ export default function Layout({ children }) {
                       <span className="text-[10px] md:text-xs font-semibold text-luxury-raspberry whitespace-nowrap">System Admin</span>
                     </div>
                   ) : (
-                    <div className="flex items-center space-x-1.5 px-2 py-1 rounded-md"
+                    <div className="flex items-center space-x-1.5 px-2 py-1 rounded-md min-w-0"
                       style={{
                         background: (() => {
                           const daysRemaining = licenseStatus.license?.valid_until ? getDaysRemaining(licenseStatus.license.valid_until) : null
@@ -579,29 +579,58 @@ export default function Layout({ children }) {
                           })()
                         }}
                       />
-                      <span 
-                        className="text-[10px] md:text-xs font-semibold whitespace-nowrap"
-                        style={{
-                          color: (() => {
-                            const daysRemaining = licenseStatus.license?.valid_until ? getDaysRemaining(licenseStatus.license.valid_until) : null
-                            if (daysRemaining === null) return '#4ade80'
-                            if (daysRemaining > 7) return '#4ade80'
-                            if (daysRemaining >= 1) return '#fbbf24'
-                            return '#f87171'
-                          })()
-                        }}
-                      >
-                        {licenseStatus.license?.valid_until && (() => {
-                          const daysRemaining = getDaysRemaining(licenseStatus.license.valid_until)
-                          if (daysRemaining !== null) {
-                            return daysRemaining === 0 ? 'Expira hoy' :
-                                   daysRemaining === 1 ? '1 día' :
-                                   daysRemaining < 0 ? 'Expirada' :
-                                   `${daysRemaining}d`
-                          }
-                          return 'Activa'
-                        })() || 'Activa'}
-                      </span>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span 
+                          className="text-[10px] md:text-xs font-semibold whitespace-nowrap"
+                          style={{
+                            color: (() => {
+                              const daysRemaining = licenseStatus.license?.valid_until ? getDaysRemaining(licenseStatus.license.valid_until) : null
+                              if (daysRemaining === null) return '#4ade80'
+                              if (daysRemaining > 7) return '#4ade80'
+                              if (daysRemaining >= 1) return '#fbbf24'
+                              return '#f87171'
+                            })()
+                          }}
+                        >
+                          {(() => {
+                            const planType = licenseStatus.license?.plan_type
+                            const planLabels = {
+                              'basic': 'Básico',
+                              'pro': 'Pro',
+                              'enterprise': 'Enterprise'
+                            }
+                            return planLabels[planType] || 'Plan'
+                          })()}
+                        </span>
+                        <span className="text-[9px] text-gray-400 hidden md:inline">•</span>
+                        <span className="text-[9px] md:text-xs text-gray-400 hidden md:inline whitespace-nowrap">
+                          {licenseStatus.license?.message_limit?.toLocaleString() || '0'} msgs
+                        </span>
+                        <span className="text-[9px] text-gray-400 hidden lg:inline">•</span>
+                        <span 
+                          className="text-[10px] md:text-xs font-semibold whitespace-nowrap hidden lg:inline"
+                          style={{
+                            color: (() => {
+                              const daysRemaining = licenseStatus.license?.valid_until ? getDaysRemaining(licenseStatus.license.valid_until) : null
+                              if (daysRemaining === null) return '#4ade80'
+                              if (daysRemaining > 7) return '#4ade80'
+                              if (daysRemaining >= 1) return '#fbbf24'
+                              return '#f87171'
+                            })()
+                          }}
+                        >
+                          {licenseStatus.license?.valid_until && (() => {
+                            const daysRemaining = getDaysRemaining(licenseStatus.license.valid_until)
+                            if (daysRemaining !== null) {
+                              return daysRemaining === 0 ? 'Expira hoy' :
+                                     daysRemaining === 1 ? '1 día' :
+                                     daysRemaining < 0 ? 'Expirada' :
+                                     `${daysRemaining}d`
+                            }
+                            return 'Activa'
+                          })() || 'Activa'}
+                        </span>
+                      </div>
                     </div>
                   )}
                 </>

@@ -304,7 +304,16 @@ export default function UserProfileModal({ isOpen, onClose }) {
                                   <p className="text-xs text-gray-400 uppercase tracking-wide">Tipo de Plan</p>
                                 </div>
                                 <p className="text-sm font-semibold text-luxury-white capitalize">
-                                  {licenseStatus.license?.plan_type || 'N/A'}
+                                  {(() => {
+                                    const planType = licenseStatus.license?.plan_type
+                                    const planLabels = {
+                                      'basic': 'Básico',
+                                      'pro': 'Pro',
+                                      'enterprise': 'Enterprise',
+                                      'system_admin': 'System Admin'
+                                    }
+                                    return planLabels[planType] || planType || 'N/A'
+                                  })()}
                                 </p>
                               </div>
                               <div className="text-center">

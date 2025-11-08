@@ -7,9 +7,9 @@ import Layout from '../components/Layout'
 import { supabase } from '../lib/supabase'
 
 const planTypes = [
-  { value: 'basic', label: 'Básico', limit: 1000 },
-  { value: 'pro', label: 'Pro', limit: 5000 },
-  { value: 'enterprise', label: 'Enterprise', limit: 20000 }
+  { value: 'basic', label: 'Básico', limit: 1000, price: 17 },
+  { value: 'pro', label: 'Pro', limit: 3000, price: 25 },
+  { value: 'enterprise', label: 'Enterprise', limit: 6000, price: 47 }
 ]
 
 export default function Licenses() {
@@ -32,7 +32,8 @@ export default function Licenses() {
     twilio_account_sid: '',
     twilio_auth_token: '',
     twilio_whatsapp_number: '',
-    twilio_messaging_service_sid: ''
+    twilio_messaging_service_sid: '',
+    user_contact_phone: '' // Número de contacto del usuario para personalizar mensajes
   })
 
   useEffect(() => {
@@ -153,7 +154,7 @@ export default function Licenses() {
 
       if (editingLicense) {
         // Verificar si tiene configuración de Twilio completa
-        const hasConfig = formData.twilio_account_sid && formData.twilio_auth_token && formData.twilio_whatsapp_number
+        const hasConfig = !!(formData.twilio_account_sid && formData.twilio_auth_token && formData.twilio_whatsapp_number)
         
         // Update existing license
         const { error } = await supabase
@@ -161,13 +162,14 @@ export default function Licenses() {
           .update({
             user_id: formData.user_id,
             plan_type: formData.plan_type,
-            message_limit: formData.message_limit,
+            message_limit: parseInt(formData.message_limit) || 0,
             valid_until: formData.valid_until,
-            twilio_account_sid: formData.twilio_account_sid || null,
-            twilio_auth_token: formData.twilio_auth_token || null,
-            twilio_whatsapp_number: formData.twilio_whatsapp_number || null,
-            twilio_messaging_service_sid: formData.twilio_messaging_service_sid || null,
-            is_active: hasConfig // Solo activa si tiene configuración de Twilio
+            twilio_account_sid: formData.twilio_account_sid?.trim() || null,
+            twilio_auth_token: formData.twilio_auth_token?.trim() || null,
+            twilio_whatsapp_number: formData.twilio_whatsapp_number?.trim() || null,
+            twilio_messaging_service_sid: formData.twilio_messaging_service_sid?.trim() || null,
+            user_contact_phone: formData.user_contact_phone?.trim() || null,
+            is_active: Boolean(hasConfig) // Solo activa si tiene configuración de Twilio
           })
           .eq('id', editingLicense.id)
 
@@ -175,6 +177,8 @@ export default function Licenses() {
           console.error('Error updating license:', error)
           if (error.code === '23503') {
             alert('Error: El usuario seleccionado no existe. Por favor ejecuta el script SQL para corregir la base de datos.')
+          } else if (error.code === '42703' || error.message?.includes('column') || error.message?.includes('boolean')) {
+            alert('Error: Las columnas de Twilio no existen en la base de datos. Por favor ejecuta el script migrate_to_twilio.sql en Supabase SQL Editor primero.')
           } else {
             throw error
           }
@@ -182,7 +186,7 @@ export default function Licenses() {
         }
       } else {
         // Verificar si tiene configuración de Twilio completa
-        const hasConfig = formData.twilio_account_sid && formData.twilio_auth_token && formData.twilio_whatsapp_number
+        const hasConfig = !!(formData.twilio_account_sid && formData.twilio_auth_token && formData.twilio_whatsapp_number)
         
         // Create new license
         const { error } = await supabase
@@ -191,13 +195,14 @@ export default function Licenses() {
             license_key: formData.license_key,
             user_id: formData.user_id,
             plan_type: formData.plan_type,
-            message_limit: formData.message_limit,
+            message_limit: parseInt(formData.message_limit) || 0,
             valid_until: formData.valid_until,
-            twilio_account_sid: formData.twilio_account_sid || null,
-            twilio_auth_token: formData.twilio_auth_token || null,
-            twilio_whatsapp_number: formData.twilio_whatsapp_number || null,
-            twilio_messaging_service_sid: formData.twilio_messaging_service_sid || null,
-            is_active: hasConfig // Solo activa si tiene configuración de Twilio
+            twilio_account_sid: formData.twilio_account_sid?.trim() || null,
+            twilio_auth_token: formData.twilio_auth_token?.trim() || null,
+            twilio_whatsapp_number: formData.twilio_whatsapp_number?.trim() || null,
+            twilio_messaging_service_sid: formData.twilio_messaging_service_sid?.trim() || null,
+            user_contact_phone: formData.user_contact_phone?.trim() || null,
+            is_active: Boolean(hasConfig) // Solo activa si tiene configuración de Twilio
           }])
 
         if (error) {
@@ -206,6 +211,8 @@ export default function Licenses() {
             alert('Error: El usuario seleccionado no existe. Por favor ejecuta el script SQL para corregir la base de datos.')
           } else if (error.code === '23505') {
             alert('Error: La clave de licencia ya existe')
+          } else if (error.code === '42703' || error.message?.includes('column') || error.message?.includes('boolean')) {
+            alert('Error: Las columnas de Twilio no existen en la base de datos. Por favor ejecuta el script migrate_to_twilio.sql en Supabase SQL Editor primero.')
           } else {
             throw error
           }
@@ -251,7 +258,8 @@ export default function Licenses() {
       twilio_account_sid: license.twilio_account_sid || '',
       twilio_auth_token: license.twilio_auth_token || '',
       twilio_whatsapp_number: license.twilio_whatsapp_number || '',
-      twilio_messaging_service_sid: license.twilio_messaging_service_sid || ''
+      twilio_messaging_service_sid: license.twilio_messaging_service_sid || '',
+      user_contact_phone: license.user_contact_phone || ''
     })
     setShowModal(true)
   }
@@ -268,7 +276,8 @@ export default function Licenses() {
       twilio_account_sid: '',
       twilio_auth_token: '',
       twilio_whatsapp_number: '',
-      twilio_messaging_service_sid: ''
+      twilio_messaging_service_sid: '',
+      user_contact_phone: ''
     })
     // Refrescar usuarios cuando se cierra el modal
     await fetchUsers()
@@ -297,7 +306,8 @@ export default function Licenses() {
       twilio_account_sid: '',
       twilio_auth_token: '',
       twilio_whatsapp_number: '',
-      twilio_messaging_service_sid: ''
+      twilio_messaging_service_sid: '',
+      user_contact_phone: ''
     })
     // Refrescar usuarios para mostrar solo los que no tienen licencia
     await fetchUsers()
@@ -640,9 +650,10 @@ export default function Licenses() {
                 initial={{ opacity: 0, scale: 0.95, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                className="bg-luxury-darkGray rounded-xl border border-luxury-gray max-w-2xl w-full p-6 my-8"
+                className="bg-luxury-darkGray rounded-xl border border-luxury-gray max-w-2xl w-full max-h-[90vh] flex flex-col my-8"
               >
-                <div className="flex items-center justify-between mb-6">
+                {/* Header fijo */}
+                <div className="flex items-center justify-between p-6 border-b border-luxury-gray flex-shrink-0">
                   <h2 className="text-2xl font-heading font-bold text-luxury-white">
                     {editingLicense ? 'Editar Licencia' : 'Nueva Licencia'}
                   </h2>
@@ -654,7 +665,9 @@ export default function Licenses() {
                   </button>
                 </div>
 
-                <div className="space-y-4">
+                {/* Contenido scrolleable */}
+                <div className="overflow-y-auto flex-1 p-6">
+                  <div className="space-y-4">
                   {/* License Key */}
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -708,7 +721,7 @@ export default function Licenses() {
                     >
                       {planTypes.map(plan => (
                         <option key={plan.value} value={plan.value}>
-                          {plan.label} - {plan.limit.toLocaleString()} mensajes
+                          {plan.label} - {plan.limit.toLocaleString()} mensajes - ${plan.price}/mes
                         </option>
                       ))}
                     </select>
@@ -831,6 +844,24 @@ export default function Licenses() {
                       </p>
                     </div>
 
+                    {/* User Contact Phone - Número de contacto del usuario */}
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Número de Contacto del Usuario
+                        <span className="text-gray-500 text-xs ml-1">(Opcional)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.user_contact_phone}
+                        onChange={(e) => setFormData({ ...formData, user_contact_phone: e.target.value })}
+                        className="input-luxury font-mono text-sm"
+                        placeholder="+584120552926"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Este número aparecerá como firma en los mensajes enviados para personalización. Si está vacío, se usará el número de Twilio (si no es Sandbox).
+                      </p>
+                    </div>
+
                     {/* Twilio Messaging Service SID */}
                     <div>
                       <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -870,9 +901,11 @@ export default function Licenses() {
                       </div>
                     )}
                   </div>
+                  </div>
                 </div>
 
-                <div className="flex items-center justify-end space-x-3 mt-6">
+                {/* Footer fijo */}
+                <div className="flex items-center justify-end space-x-3 p-6 border-t border-luxury-gray flex-shrink-0">
                   <button onClick={handleCloseModal} className="btn-ghost">
                     Cancelar
                   </button>

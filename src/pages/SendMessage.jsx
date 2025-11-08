@@ -22,6 +22,13 @@ import CustomAlert from '../components/CustomAlert'
 import QRScanner from '../components/QRScanner'
 import { sendTwilioWhatsApp } from '../lib/twilioService'
 
+// Helper para detectar si es número de Sandbox
+const isSandboxNumber = (number) => {
+  if (!number) return false
+  const normalized = number.replace(/whatsapp:/gi, '').trim()
+  return normalized === '+14155238886' || normalized === '14155238886'
+}
+
 const messageTypeInfo = {
   received: {
     label: 'Paquetes Recibidos',
@@ -601,7 +608,7 @@ export default function SendMessage() {
     }
 
     setPhoneNumbers([...phoneNumbers, {
-      id: Date.now(),
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       number: whatsappNumber, // Store in WhatsApp format (+58XXXXXXXXXX)
       status: 'pending'
     }])
@@ -692,7 +699,7 @@ export default function SendMessage() {
 
     // Add to list (store in WhatsApp format)
     const newPhone = {
-      id: Date.now(),
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       number: phoneNumber, // Store in WhatsApp format (+58XXXXXXXXXX)
       status: 'pending'
     }
@@ -745,26 +752,72 @@ export default function SendMessage() {
 
     try {
       // Enviar mensajes usando Twilio WhatsApp API
+      // Usar un Set para asegurar que no haya duplicados por número
+      const uniqueNumbers = new Map()
+      phoneNumbers.forEach(phone => {
+        // Normalizar el número para comparación (sin espacios, en minúsculas si aplica)
+        const normalized = phone.number.trim()
+        if (!uniqueNumbers.has(normalized)) {
+          uniqueNumbers.set(normalized, phone)
+        } else {
+          console.warn(`Número duplicado detectado y omitido: ${normalized}`)
+        }
+      })
+
+      const uniquePhoneNumbers = Array.from(uniqueNumbers.values())
+      console.log(`Enviando a ${uniquePhoneNumbers.length} números únicos de ${phoneNumbers.length} totales`)
+
       const results = await Promise.all(
-        phoneNumbers.map(async (phone) => {
+        uniquePhoneNumbers.map(async (phone) => {
           try {
+            // Preparar mensaje con firma personalizada del usuario
+            let personalizedMessage = customMessage
+            
+            // Si la licencia tiene un número de contacto del usuario, agregarlo como firma
+            if (userLicense.user_contact_phone) {
+              const userPhone = userLicense.user_contact_phone.trim()
+              // Agregar firma al final del mensaje si no termina con el número ya
+              if (!personalizedMessage.includes(userPhone)) {
+                personalizedMessage += `\n\n📱 Contacto: ${userPhone}`
+              }
+            } else if (userLicense.twilio_whatsapp_number && !isSandboxNumber(userLicense.twilio_whatsapp_number)) {
+              // Si no tiene número de contacto pero tiene un número de Twilio personalizado (no Sandbox), usarlo
+              const userPhone = userLicense.twilio_whatsapp_number.replace(/whatsapp:/gi, '').trim()
+              if (!personalizedMessage.includes(userPhone)) {
+                personalizedMessage += `\n\n📱 Contacto: ${userPhone}`
+              }
+            }
+            
+            console.log(`Enviando mensaje a: ${phone.number}`)
             // Llamada a Twilio API
             const result = await sendTwilioWhatsApp({
               accountSid: userLicense.twilio_account_sid,
               authToken: userLicense.twilio_auth_token,
               fromNumber: userLicense.twilio_whatsapp_number,
               toNumber: phone.number,
-              message: customMessage,
+              message: personalizedMessage,
               messagingServiceSid: userLicense.twilio_messaging_service_sid || undefined
             })
 
             if (!result.success) {
               console.error(`Error Twilio API para ${phone.number}:`, result.error)
+              
+              // Si es un error de Sandbox, mostrar mensaje más claro
+              if (result.isSandboxError) {
+                showAlert(
+                  'Número no verificado',
+                  `El número ${phone.number} no está verificado en Twilio Sandbox. Debes verificar este número primero.`,
+                  'warning'
+                )
+              }
+              
               throw new Error(result.error || 'Error al enviar mensaje')
             }
 
+            console.log(`✅ Mensaje enviado exitosamente a: ${phone.number}`)
+
             // Log to database
-            const { error } = await supabase
+            const { error: logError } = await supabase
               .from('sent_log')
               .insert([{
                 user_id: profile.id,
@@ -775,15 +828,18 @@ export default function SendMessage() {
                 sent_date: new Date().toISOString().split('T')[0]
               }])
 
-            if (error) throw error
+            if (logError) {
+              console.error('Error logging message:', logError)
+              // No lanzar error aquí, solo loguear - el mensaje ya se envió exitosamente
+            }
 
-            return { id: phone.id, success: true }
+            return { id: phone.id, success: true, phoneNumber: phone.number }
           } catch (error) {
             console.error(`Error sending to ${phone.number}:`, error)
             
             // Log error to database
             try {
-              await supabase
+              const { error: logError } = await supabase
                 .from('sent_log')
                 .insert([{
                   user_id: profile.id,
@@ -793,22 +849,41 @@ export default function SendMessage() {
                   status: 'failed',
                   sent_date: new Date().toISOString().split('T')[0]
                 }])
+              
+              if (logError) {
+                console.error('Error logging failed message:', logError)
+                // Si el error es de foreign key, informar al usuario
+                if (logError.code === '23503' || logError.message?.includes('foreign key')) {
+                  console.warn('⚠️ La foreign key de sent_log necesita ser corregida. Ejecuta fix_sent_log_foreign_key.sql en Supabase')
+                }
+              }
             } catch (logError) {
               console.error('Error logging failed message:', logError)
             }
 
-            return { id: phone.id, success: false, error: error.message }
+            return { id: phone.id, success: false, error: error.message, phoneNumber: phone.number }
           }
         })
       )
 
-      // Update status
+      // Update status - solo actualizar los números que realmente se enviaron
       const updatedPhones = phoneNumbers.map(phone => {
-        const result = results.find(r => r.id === phone.id)
-        return {
-          ...phone,
-          status: result.success ? 'sent' : 'failed'
+        const result = results.find(r => r.id === phone.id || r.phoneNumber === phone.number)
+        if (result) {
+          return {
+            ...phone,
+            status: result.success ? 'sent' : 'failed'
+          }
         }
+        // Si el número fue duplicado y no se envió, marcarlo como omitido
+        const wasSent = uniquePhoneNumbers.some(up => up.id === phone.id || up.number === phone.number)
+        if (!wasSent) {
+          return {
+            ...phone,
+            status: 'skipped' // Nuevo estado para números duplicados omitidos
+          }
+        }
+        return phone
       })
 
       setPhoneNumbers(updatedPhones)
@@ -816,10 +891,11 @@ export default function SendMessage() {
       // Calculate success and failed counts
       const successCount = results.filter(r => r.success).length
       const failedCount = results.filter(r => !r.success).length
+      const skippedCount = phoneNumbers.length - uniquePhoneNumbers.length
 
       // Save complete batch report to message_batches table
       try {
-        const phoneNumbersList = phoneNumbers.map(p => p.number)
+        const phoneNumbersList = uniquePhoneNumbers.map(p => p.number)
         
         const { error: batchError } = await supabase
           .from('message_batches')
@@ -845,7 +921,11 @@ export default function SendMessage() {
       }
 
       // Show success message
-      showAlert('Mensajes enviados', `${successCount} de ${phoneNumbers.length} mensajes enviados exitosamente`, 'success')
+      let successMessage = `${successCount} de ${uniquePhoneNumbers.length} mensajes enviados exitosamente`
+      if (skippedCount > 0) {
+        successMessage += ` (${skippedCount} número(s) duplicado(s) omitido(s))`
+      }
+      showAlert('Mensajes enviados', successMessage, 'success')
 
       // Clear list after a delay
       setTimeout(() => {
@@ -1057,11 +1137,15 @@ export default function SendMessage() {
                           {phone.status === 'failed' && (
                             <AlertTriangle className="w-4 h-4 text-red-400" />
                           )}
+                          {phone.status === 'skipped' && (
+                            <AlertTriangle className="w-4 h-4 text-yellow-400" title="Número duplicado omitido" />
+                          )}
                         </div>
-                        {phone.status === 'pending' && (
+                        {(phone.status === 'pending' || phone.status === 'skipped') && (
                           <button
                             onClick={() => handleRemovePhone(phone.id)}
                             className="text-red-400 hover:text-red-300"
+                            title={phone.status === 'skipped' ? 'Eliminar número duplicado' : 'Eliminar número'}
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>

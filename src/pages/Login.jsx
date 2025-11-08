@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { User, Lock, Loader2, Shield, Eye, EyeOff, ArrowLeft, ShoppingCart, Key, Mail } from 'lucide-react'
+import { User, Lock, Loader2, Shield, Eye, EyeOff, ArrowLeft, ShoppingCart, Key, Mail, Check, Sparkles, Zap, Crown } from 'lucide-react'
 import { FaWhatsapp } from 'react-icons/fa'
 import { useAuth } from '../contexts/AuthContext'
 import CustomAlert from '../components/CustomAlert'
@@ -519,7 +519,7 @@ export default function Login() {
               </motion.div>
             </motion.div>
           ) : showAcquireApp ? (
-            // Pantalla de adquirir app
+            // Pantalla de adquirir app - Planes Premium
             <motion.div
               key="acquire-app"
               initial={{ x: -1000, opacity: 0 }}
@@ -529,7 +529,7 @@ export default function Login() {
                 duration: 0.6,
                 ease: [0.4, 0, 0.2, 1]
               }}
-              className="w-full"
+              className="w-full max-w-6xl mx-auto"
             >
               {/* Botón Atrás */}
               <motion.div
@@ -552,7 +552,7 @@ export default function Login() {
                 </motion.button>
               </motion.div>
 
-              {/* Contenido de adquirir app */}
+              {/* Header */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -569,7 +569,7 @@ export default function Login() {
                     <img
                       src="/logo.png"
                       alt="Logo"
-                      className="w-48 h-auto object-contain"
+                      className="w-32 h-auto object-contain"
                       style={{
                         filter: 'drop-shadow(0 0 20px rgba(255, 255, 255, 0.4)) drop-shadow(0 0 40px rgba(255, 255, 255, 0.2))',
                       }}
@@ -596,50 +596,269 @@ export default function Login() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.4, duration: 0.6 }}
-                  className="text-2xl font-bold text-white mb-4"
+                  className="text-3xl md:text-4xl font-bold text-white mb-3 bg-gradient-to-r from-white via-gray-100 to-white bg-clip-text text-transparent"
                 >
-                  Adquiere la App
+                  Elige tu Plan Premium
                 </motion.h2>
 
                 <motion.p
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.5, duration: 0.6 }}
-                  className="text-gray-400 text-sm leading-relaxed mb-8 max-w-md mx-auto"
+                  className="text-gray-400 text-sm md:text-base leading-relaxed mb-2"
                 >
-                  ¿Te interesa obtener acceso a Piker? Contáctanos a través de WhatsApp y nuestro equipo te ayudará a adquirir tu licencia.
+                  Renta mensual con mensajería ilimitada certificada
                 </motion.p>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.6, duration: 0.6 }}
+                  className="flex items-center justify-center gap-2 text-xs text-gray-500"
+                >
+                  <Sparkles className="w-4 h-4 text-luxury-gold" />
+                  <span>Planes flexibles • Sin compromisos • Soporte 24/7</span>
+                </motion.div>
               </motion.div>
 
-              {/* Botón de WhatsApp */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.6, duration: 0.6 }}
-                className="flex justify-center"
-              >
-                <motion.a
-                  href={`https://wa.me/${supportContacts[0].phone}?text=${getWhatsAppMessage('request_access')}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="flex items-center gap-3 px-8 py-4 rounded-xl border-2 border-green-500/50 bg-green-500/10 hover:bg-green-500/20 text-green-400 hover:text-green-300 transition-all duration-300 group shadow-lg shadow-green-500/20"
+              {/* Planes */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                {/* Plan Básico */}
+                <motion.div
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3, duration: 0.6 }}
+                  whileHover={{ y: -8, scale: 1.02 }}
+                  className="relative group"
                 >
-                  <FaWhatsapp className="w-6 h-6 group-hover:scale-110 transition-transform" />
-                  <span className="text-base font-semibold">Contactar por WhatsApp</span>
-                </motion.a>
-              </motion.div>
+                  <div className="relative h-full bg-gradient-to-br from-blue-500/10 via-blue-600/5 to-transparent border border-blue-500/30 rounded-xl p-5 backdrop-blur-xl overflow-hidden">
+                    {/* Efecto de brillo */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 via-blue-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    
+                    {/* Contenido */}
+                    <div className="relative z-10">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <div className="p-2 rounded-lg bg-blue-500/20 border border-blue-500/30">
+                            <Zap className="w-4 h-4 text-blue-400" />
+                          </div>
+                          <h3 className="text-xl font-bold text-white">Plan Básico</h3>
+                        </div>
+                        <span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-[10px] font-bold border border-blue-500/30">
+                          BÁSICO
+                        </span>
+                      </div>
+                      
+                      <div className="mb-3">
+                        <span className="text-3xl font-bold text-white">$17</span>
+                        <span className="text-gray-400 text-xs ml-1">/mes</span>
+                      </div>
+                      
+                      <div className="mb-4">
+                        <div className="flex items-center gap-2 text-xs text-gray-300">
+                          <Check className="w-4 h-4 text-blue-400 flex-shrink-0" />
+                          <span><strong className="text-white">1,000</strong> mensajes/mes • Envío masivo certificado • Soporte técnico</span>
+                        </div>
+                      </div>
+                      
+                      <motion.a
+                        href={`https://wa.me/${supportContacts[0].phone}?text=${encodeURIComponent('Hola, me interesa el Plan Básico de Piker (1,000 mensajes - $17/mes)')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="block w-full py-2.5 px-3 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/50 text-blue-300 hover:text-blue-200 text-center text-sm font-semibold transition-all duration-300 group"
+                      >
+                        <span className="flex items-center justify-center gap-2">
+                          <FaWhatsapp className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+                          Solicitar Plan
+                        </span>
+                      </motion.a>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* Plan Pro - Best Choice */}
+                <motion.div
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4, duration: 0.6 }}
+                  whileHover={{ y: -8, scale: 1.02 }}
+                  className="relative group"
+                >
+                  {/* Badge Mejor Opción */}
+                  <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 z-20">
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ delay: 0.6, type: "spring", stiffness: 200 }}
+                      className="px-3 py-1 rounded-full bg-gradient-to-r from-yellow-400 via-yellow-300 to-yellow-400 text-black text-[10px] font-bold shadow-xl shadow-yellow-500/70 flex items-center gap-1.5 border-2 border-yellow-200"
+                      style={{
+                        background: 'linear-gradient(135deg, #FCD34D 0%, #FBBF24 50%, #F59E0B 100%)',
+                        boxShadow: '0 4px 20px rgba(251, 191, 36, 0.6), 0 0 0 2px rgba(255, 255, 255, 0.3)',
+                      }}
+                    >
+                      <Crown className="w-3 h-3 text-black" />
+                      <span className="text-black font-extrabold">MEJOR OPCIÓN</span>
+                    </motion.div>
+                  </div>
+
+                  <div className="relative h-full bg-gradient-to-br from-purple-500/20 via-purple-600/15 to-transparent border-2 border-purple-500/50 rounded-xl p-5 backdrop-blur-xl overflow-hidden shadow-2xl shadow-purple-500/20">
+                    {/* Efecto de brillo animado */}
+                    <motion.div
+                      className="absolute inset-0 bg-gradient-to-br from-purple-500/20 via-purple-500/10 to-transparent"
+                      animate={{
+                        opacity: [0.3, 0.6, 0.3],
+                      }}
+                      transition={{
+                        duration: 3,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      }}
+                    />
+                    
+                    {/* Partículas de brillo */}
+                    <div className="absolute inset-0 overflow-hidden">
+                      {[...Array(4)].map((_, i) => (
+                        <motion.div
+                          key={i}
+                          className="absolute w-1.5 h-1.5 bg-purple-400 rounded-full"
+                          style={{
+                            left: `${25 + i * 20}%`,
+                            top: `${35 + i * 15}%`,
+                          }}
+                          animate={{
+                            opacity: [0, 1, 0],
+                            scale: [0.5, 1, 0.5],
+                          }}
+                          transition={{
+                            duration: 2,
+                            repeat: Infinity,
+                            delay: i * 0.3,
+                            ease: "easeInOut"
+                          }}
+                        />
+                      ))}
+                    </div>
+                    
+                    {/* Contenido */}
+                    <div className="relative z-10">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <div className="p-2 rounded-lg bg-purple-500/30 border border-purple-500/50">
+                            <Sparkles className="w-4 h-4 text-purple-300" />
+                          </div>
+                          <h3 className="text-xl font-bold text-white">Plan Pro</h3>
+                        </div>
+                        <span className="px-2 py-0.5 rounded-full bg-purple-500/30 text-purple-300 text-[10px] font-bold border border-purple-500/50">
+                          PRO
+                        </span>
+                      </div>
+                      
+                      <div className="mb-3">
+                        <span className="text-3xl font-bold text-white">$25</span>
+                        <span className="text-gray-400 text-xs ml-1">/mes</span>
+                      </div>
+                      
+                      <div className="mb-4">
+                        <div className="flex items-center gap-2 text-xs text-gray-300 mb-2">
+                          <Check className="w-4 h-4 text-purple-400 flex-shrink-0" />
+                          <span><strong className="text-white">3,000</strong> mensajes/mes • Envío masivo certificado</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-gray-300">
+                          <Check className="w-4 h-4 text-purple-400 flex-shrink-0" />
+                          <span>Soporte prioritario • Análisis avanzado</span>
+                        </div>
+                      </div>
+                      
+                      <motion.a
+                        href={`https://wa.me/${supportContacts[0].phone}?text=${encodeURIComponent('Hola, me interesa el Plan Pro de Piker (3,000 mensajes - $25/mes)')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="block w-full py-2.5 px-3 rounded-lg bg-gradient-to-r from-purple-500/40 to-purple-600/40 hover:from-purple-500/50 hover:to-purple-600/50 border border-purple-500/50 text-white text-center text-sm font-semibold transition-all duration-300 group shadow-lg shadow-purple-500/30"
+                      >
+                        <span className="flex items-center justify-center gap-2">
+                          <FaWhatsapp className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+                          Solicitar Plan
+                        </span>
+                      </motion.a>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* Plan Enterprise */}
+                <motion.div
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5, duration: 0.6 }}
+                  whileHover={{ y: -8, scale: 1.02 }}
+                  className="relative group"
+                >
+                  <div className="relative h-full bg-gradient-to-br from-luxury-gold/20 via-yellow-500/10 to-transparent border border-luxury-gold/40 rounded-xl p-5 backdrop-blur-xl overflow-hidden">
+                    {/* Efecto de brillo */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-luxury-gold/0 via-luxury-gold/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    
+                    {/* Contenido */}
+                    <div className="relative z-10">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <div className="p-2 rounded-lg bg-luxury-gold/30 border border-luxury-gold/50">
+                            <Crown className="w-4 h-4 text-luxury-gold" />
+                          </div>
+                          <h3 className="text-xl font-bold text-white">Plan Enterprise</h3>
+                        </div>
+                        <span className="px-2 py-0.5 rounded-full bg-luxury-gold/20 text-luxury-gold text-[10px] font-bold border border-luxury-gold/40">
+                          ENTERPRISE
+                        </span>
+                      </div>
+                      
+                      <div className="mb-3">
+                        <span className="text-3xl font-bold text-white">$47</span>
+                        <span className="text-gray-400 text-xs ml-1">/mes</span>
+                      </div>
+                      
+                      <div className="mb-4">
+                        <div className="flex items-center gap-2 text-xs text-gray-300 mb-2">
+                          <Check className="w-4 h-4 text-luxury-gold flex-shrink-0" />
+                          <span><strong className="text-white">6,000</strong> mensajes/mes • Envío masivo certificado</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-gray-300">
+                          <Check className="w-4 h-4 text-luxury-gold flex-shrink-0" />
+                          <span>Soporte 24/7 • Análisis avanzado • Personalización</span>
+                        </div>
+                      </div>
+                      
+                      <motion.a
+                        href={`https://wa.me/${supportContacts[0].phone}?text=${encodeURIComponent('Hola, me interesa el Plan Enterprise de Piker (6,000 mensajes - $47/mes)')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="block w-full py-2.5 px-3 rounded-lg bg-luxury-gold/20 hover:bg-luxury-gold/30 border border-luxury-gold/50 text-luxury-gold hover:text-yellow-300 text-center text-sm font-semibold transition-all duration-300 group"
+                      >
+                        <span className="flex items-center justify-center gap-2">
+                          <FaWhatsapp className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+                          Solicitar Plan
+                        </span>
+                      </motion.a>
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
 
               {/* Información adicional */}
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.7, duration: 0.6 }}
-                className="mt-8 text-center"
+                className="text-center"
               >
+                <p className="text-gray-400 text-sm mb-2">
+                  💬 Contáctanos por WhatsApp para más información
+                </p>
                 <p className="text-gray-500 text-xs">
-                  Nuestro equipo responderá en breve
+                  Nuestro equipo responderá en breve • Todos los planes incluyen soporte técnico
                 </p>
               </motion.div>
             </motion.div>
