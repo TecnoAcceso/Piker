@@ -88,6 +88,69 @@ export default function SendMessage() {
     }
   }
 
+  const convertToWhatsAppFormat = (phone) => {
+    if (!phone) return null
+    
+    // Remove all non-numeric characters first
+    let cleaned = phone.replace(/\D/g, '')
+    
+    // If empty after cleaning, return null
+    if (!cleaned) return null
+    
+    // Convert Venezuelan phone numbers to WhatsApp format (+58)
+    // Venezuelan numbers typically:
+    // - Start with 0: 04245939950 → +584245939950
+    // - Or are 10 digits without 0: 4160454501 → +584160454501
+    // - Already in format +58XXXXXXXXXX or 58XXXXXXXXXX
+    
+    // If it already starts with 58 (international format without +), keep it
+    if (cleaned.startsWith('58')) {
+      // Validate length: should be 12 digits (58 + 10 digits)
+      if (cleaned.length === 12) {
+        return '+' + cleaned
+      }
+      // If longer, might have extra digits, take first 12
+      if (cleaned.length > 12) {
+        return '+' + cleaned.substring(0, 12)
+      }
+    }
+    // If it starts with 0 and has 11 digits (0 + 10 digits), remove 0 and add 58
+    else if (cleaned.startsWith('0') && cleaned.length === 11) {
+      cleaned = '58' + cleaned.substring(1)
+      return '+' + cleaned
+    }
+    // If it's exactly 10 digits, assume it's Venezuelan and add 58
+    else if (cleaned.length === 10) {
+      cleaned = '58' + cleaned
+      return '+' + cleaned
+    }
+    // If it's 11 digits but doesn't start with 0 or 58, might be malformed
+    // Try to extract last 10 digits and add 58
+    else if (cleaned.length === 11 && !cleaned.startsWith('0')) {
+      cleaned = '58' + cleaned.substring(1)
+      return '+' + cleaned
+    }
+    // If it's 9 digits, might be missing a digit, add 58 anyway
+    else if (cleaned.length === 9) {
+      cleaned = '58' + cleaned
+      return '+' + cleaned
+    }
+    // For other lengths, try to normalize
+    else if (cleaned.length >= 10 && cleaned.length <= 12) {
+      // If it's 12 digits and doesn't start with 58, might be international format
+      // Try to extract Venezuelan number
+      if (cleaned.length === 12 && !cleaned.startsWith('58')) {
+        // Might be a different country code, but assume Venezuelan for now
+        cleaned = '58' + cleaned.substring(2)
+        return '+' + cleaned
+      }
+      return '+' + cleaned
+    }
+    
+    // If none of the above, return null (invalid)
+    return null
+  }
+
   const validatePhoneNumber = (phone) => {
     // Remove all non-numeric characters
     const cleaned = phone.replace(/\D/g, '')
@@ -117,31 +180,183 @@ export default function SendMessage() {
     }
   }
 
+  const extractSenderPhoneFromQR = (qrData) => {
+    if (!qrData || typeof qrData !== 'string') {
+      return null
+    }
+
+    // Split by semicolon - empty strings between ";;" will be preserved
+    const fields = qrData.split(';')
+    
+    console.log('Campos del QR para remitente (total:', fields.length, '):', fields)
+    
+    // The sender phone number is typically in positions 5-7 (indices 4-6)
+    // Structure varies:
+    // - Position 5: sender phone (04127041323) - after sender name
+    // - Position 6: might be email or phone
+    // - Position 7: might be phone
+    // Position 8 onwards usually contains recipient or other data
+    // We'll check positions 5, 6, and 7 (indices 4, 5, 6) more strictly
+    
+    const positionsToTry = [4, 5, 6] // Positions 5, 6, 7 (0-indexed)
+    
+    for (const targetIndex of positionsToTry) {
+      if (fields.length > targetIndex) {
+        const phoneField = fields[targetIndex]?.trim()
+        
+        // Validate it looks like a phone number (9-11 digits, not a name, email, or very long ID)
+        // Must be a valid Venezuelan phone number format
+        // Exclude emails, names, IDs, and other non-phone data
+        if (phoneField && 
+            /^\d{9,11}$/.test(phoneField) && 
+            !/^\d{4,5}$/.test(phoneField) &&
+            !phoneField.includes('@') &&
+            !phoneField.includes(' ') &&
+            !phoneField.includes('-') &&
+            !phoneField.includes('(') &&
+            !phoneField.includes(')')) {
+          console.log(`Número del remitente extraído de posición ${targetIndex + 1}:`, phoneField)
+          // Convert to WhatsApp format before returning
+          const whatsappFormat = convertToWhatsAppFormat(phoneField)
+          console.log(`Número del remitente convertido a formato WhatsApp:`, whatsappFormat)
+          return whatsappFormat
+        }
+      }
+    }
+    
+    // Log what we found in positions 5-7 for debugging
+    if (fields.length > 4) {
+      console.warn('No se encontró número válido del remitente en posiciones 5-7')
+      console.warn('Posición 5:', fields[4])
+      if (fields.length > 5) {
+        console.warn('Posición 6:', fields[5])
+      }
+      if (fields.length > 6) {
+        console.warn('Posición 7:', fields[6])
+      }
+      // Check if there's an email instead (indicates remitente might not have phone)
+      const hasEmail = fields.some((field, idx) => {
+        return idx >= 4 && idx <= 6 && field && field.includes('@')
+      })
+      if (hasEmail) {
+        console.warn('Se encontró un email en las posiciones del remitente. El remitente puede no tener número telefónico.')
+      }
+    } else {
+      console.warn('QR no tiene suficientes campos. Total:', fields.length, 'Necesario: al menos 5')
+    }
+
+    // Don't use fallback - if remitente doesn't have phone in expected positions, return null
+    // This prevents capturing numbers from other people (like recipients or intermediaries)
+    console.warn('El remitente no tiene número telefónico en las posiciones esperadas')
+    return null
+  }
+
+  const extractPhoneFromQR = (qrData) => {
+    if (!qrData || typeof qrData !== 'string') {
+      return null
+    }
+
+    // Split by semicolon - empty strings between ";;" will be preserved
+    const fields = qrData.split(';')
+    
+    console.log('Campos del QR (total:', fields.length, '):', fields)
+    
+    // The recipient phone number is consistently at position 9 (index 8) when counting from 1
+    // However, in some QRs, position 9 contains the recipient name and position 10 contains the phone
+    // We'll check both positions 9 and 10 (indices 8 and 9) to handle both cases:
+    // - Case 1: Position 9 = recipient name, Position 10 = recipient phone (04245939950, 4160454501)
+    // - Case 2: Position 9 = recipient phone directly (if structure differs)
+    
+    const positionsToTry = [8, 9] // Positions 9 and 10 (0-indexed)
+    
+    for (const targetIndex of positionsToTry) {
+      if (fields.length > targetIndex) {
+        const phoneField = fields[targetIndex]?.trim()
+        
+        // Validate it looks like a phone number (9-11 digits, not a name or email)
+        // Accepts numbers that start with 0 (Venezuela format like 04245939950) 
+        // or other digits (like 4160454501)
+        if (phoneField && /^\d{9,11}$/.test(phoneField) && !/^\d{4,5}$/.test(phoneField)) {
+          console.log(`Número del destinatario extraído de posición ${targetIndex + 1}:`, phoneField)
+          // Convert to WhatsApp format before returning
+          const whatsappFormat = convertToWhatsAppFormat(phoneField)
+          console.log(`Número convertido a formato WhatsApp:`, whatsappFormat)
+          return whatsappFormat
+        }
+      }
+    }
+    
+    // Log what we found in positions 9 and 10 for debugging
+    if (fields.length > 8) {
+      console.warn('No se encontró número válido en posiciones 9 o 10')
+      console.warn('Posición 9:', fields[8])
+      if (fields.length > 9) {
+        console.warn('Posición 10:', fields[9])
+      }
+    } else {
+      console.warn('QR no tiene suficientes campos. Total:', fields.length, 'Necesario: al menos 9')
+    }
+
+    // Fallback: try to find any phone number pattern in the QR data
+    // Look for 9-11 digit numbers (excluding very short numbers like IDs)
+    const phonePattern = /\b\d{9,11}\b/g
+    const matches = qrData.match(phonePattern)
+    
+    if (matches && matches.length > 0) {
+      // Filter out numbers that are too short or look like IDs
+      const validPhones = matches.filter(m => {
+        const num = m.trim()
+        return /^\d{9,11}$/.test(num) && !/^\d{4,6}$/.test(num)
+      })
+      
+      if (validPhones.length > 0) {
+        // If multiple numbers found, prefer the second one (usually the recipient)
+        // First is usually the sender
+        const recipientPhone = validPhones.length > 1 ? validPhones[1] : validPhones[0]
+        console.log('Número extraído (fallback):', recipientPhone)
+        // Convert to WhatsApp format before returning
+        const whatsappFormat = convertToWhatsAppFormat(recipientPhone)
+        console.log('Número convertido a formato WhatsApp (fallback):', whatsappFormat)
+        return whatsappFormat
+      }
+    }
+
+    return null
+  }
+
   const handleAddPhone = async () => {
     if (!currentPhone.trim()) return
 
-    const validation = validatePhoneNumber(currentPhone)
+    // Convert to WhatsApp format first
+    const whatsappNumber = convertToWhatsAppFormat(currentPhone)
+    
+    if (!whatsappNumber) {
+      showAlert('Número inválido', 'Por favor ingresa un número de teléfono válido', 'error')
+      return
+    }
+
+    const validation = validatePhoneNumber(whatsappNumber)
     if (!validation.valid) {
       showAlert('Número inválido', validation.error, 'error')
       return
     }
 
-    // Check if already in temporary list
-    if (phoneNumbers.some(p => p.number === validation.cleaned)) {
+    // Check if already in temporary list (compare WhatsApp format numbers)
+    if (phoneNumbers.some(p => p.number === whatsappNumber)) {
       showAlert('Número duplicado', 'Este número ya está en la lista', 'warning')
       return
     }
 
-    // Check for daily duplicate
-    const isDuplicate = await checkDuplicate(validation.cleaned)
+    // Check for daily duplicate (use WhatsApp format)
+    const isDuplicate = await checkDuplicate(whatsappNumber)
     if (isDuplicate) {
-      showAlert('Mensaje ya enviado', `El número ${validation.cleaned} ya tiene un mensaje de ${messageTypeInfo[type].label} enviado hoy.`, 'warning')
+      showAlert('Mensaje ya enviado', `El número ${whatsappNumber} ya tiene un mensaje de ${messageTypeInfo[type].label} enviado hoy.`, 'warning')
       return
     }
 
     setPhoneNumbers([...phoneNumbers, {
       id: Date.now(),
-      number: validation.cleaned,
+      number: whatsappNumber, // Store in WhatsApp format (+58XXXXXXXXXX)
       status: 'pending'
     }])
     setCurrentPhone('')
@@ -160,37 +375,86 @@ export default function SendMessage() {
       return
     }
 
+    console.log('QR escaneado - Datos completos:', decodedText)
+
     // Close scanner
     setShowQRScanner(false)
 
-    // Process scanned phone number
-    const validation = validatePhoneNumber(decodedText)
+    let phoneNumber = null
+
+    // For "received" and "reminder" types, extract recipient phone from QR data
+    if (type === 'received' || type === 'reminder') {
+      phoneNumber = extractPhoneFromQR(decodedText)
+      console.log('Tipo:', type, '- Número del destinatario extraído:', phoneNumber)
+      
+      if (!phoneNumber) {
+        showAlert('QR inválido', 'No se pudo extraer el número del destinatario del código QR', 'error')
+        return
+      }
+      // Number is already in WhatsApp format from extractPhoneFromQR
+    } else if (type === 'return') {
+      // For "return" type, extract sender phone from QR data
+      phoneNumber = extractSenderPhoneFromQR(decodedText)
+      console.log('Tipo:', type, '- Número del remitente extraído:', phoneNumber)
+      
+      if (!phoneNumber) {
+        showAlert(
+          'Remitente sin número telefónico', 
+          'El remitente de este paquete no tiene número telefónico registrado en el código QR. Por favor, ingresa el número manualmente o contacta al remitente por otro medio.', 
+          'warning'
+        )
+        return
+      }
+      // Number is already in WhatsApp format from extractSenderPhoneFromQR
+    } else {
+      // For other types (if any), use the QR data directly as phone number
+      const rawPhone = decodedText.trim()
+      console.log('Tipo:', type, '- Usando QR directamente:', rawPhone)
+      // Convert to WhatsApp format
+      phoneNumber = convertToWhatsAppFormat(rawPhone)
+      console.log('Número convertido a formato WhatsApp:', phoneNumber)
+      
+      if (!phoneNumber) {
+        showAlert('QR inválido', 'El código QR no contiene un número válido', 'error')
+        return
+      }
+    }
+
+    // Process scanned phone number (phoneNumber is already in WhatsApp format)
+    // Remove + for validation but keep it for storage
+    const validation = validatePhoneNumber(phoneNumber)
     if (!validation.valid) {
       showAlert('QR inválido', 'El código QR no contiene un número válido', 'error')
       return
     }
 
-    // Check duplicate
-    const isDuplicate = await checkDuplicate(validation.cleaned)
+    console.log('Número validado (formato WhatsApp):', phoneNumber)
+
+    // Check duplicate (use WhatsApp format number)
+    const isDuplicate = await checkDuplicate(phoneNumber)
     if (isDuplicate) {
-      showAlert('Mensaje ya enviado', `El número ${validation.cleaned} ya tiene un mensaje de ${messageTypeInfo[type].label} enviado hoy.`, 'warning')
+      showAlert('Mensaje ya enviado', `El número ${phoneNumber} ya tiene un mensaje de ${messageTypeInfo[type].label} enviado hoy.`, 'warning')
       return
     }
 
-    // Check if already in list
-    if (phoneNumbers.some(p => p.number === validation.cleaned)) {
+    // Check if already in list (compare WhatsApp format numbers)
+    if (phoneNumbers.some(p => p.number === phoneNumber)) {
       showAlert('Número duplicado', 'Este número ya está en la lista', 'warning')
       return
     }
 
-    // Add to list
-    setPhoneNumbers([...phoneNumbers, {
+    // Add to list (store in WhatsApp format)
+    const newPhone = {
       id: Date.now(),
-      number: validation.cleaned,
+      number: phoneNumber, // Store in WhatsApp format (+58XXXXXXXXXX)
       status: 'pending'
-    }])
+    }
+    
+    console.log('Agregando número a la lista (formato WhatsApp):', newPhone)
+    setPhoneNumbers([...phoneNumbers, newPhone])
+    console.log('Lista actualizada. Total de números:', phoneNumbers.length + 1)
 
-    showAlert('QR escaneado', `Número ${validation.cleaned} agregado exitosamente`, 'success')
+    showAlert('QR escaneado', `Número ${phoneNumber} agregado exitosamente`, 'success')
   }
 
   const handleQRScanError = (error) => {
