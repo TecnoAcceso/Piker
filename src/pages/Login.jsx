@@ -53,17 +53,23 @@ export default function Login() {
       
       if (result.success) {
         setRecoverySuccess(result.message)
+        // Limpiar formulario inmediatamente después del éxito
+        setRecoveryEmail('')
         setTimeout(() => {
           setShowRecovery(false)
           setShowLoginForm(true)
           setRecoveryStep('select')
           setRecoveryEmail('')
+          setRecoverySuccess('')
         }, 3000)
       } else {
         setRecoveryError(result.message || 'Error al recuperar el usuario')
+        // Limpiar formulario también en caso de error
+        setRecoveryEmail('')
       }
     } catch (error) {
       setRecoveryError('Error al recuperar el usuario. Por favor, intente nuevamente.')
+      setRecoveryEmail('')
     } finally {
       setRecoveryLoading(false)
     }
@@ -80,18 +86,24 @@ export default function Login() {
       
       if (result.success) {
         setRecoverySuccess(result.message)
+        // Limpiar formulario inmediatamente después del éxito
+        setRecoveryEmail('')
         // NO mostrar contraseña temporal en el modal - solo se envía por correo
         setTimeout(() => {
           setShowRecovery(false)
           setShowLoginForm(true)
-        setRecoveryStep('select')
-        setRecoveryEmail('')
-      }, 3000)
+          setRecoveryStep('select')
+          setRecoveryEmail('')
+          setRecoverySuccess('')
+        }, 3000)
       } else {
         setRecoveryError(result.message || 'Error al recuperar la contraseña')
+        // Limpiar formulario también en caso de error para facilitar reintento
+        setRecoveryEmail('')
       }
     } catch (error) {
       setRecoveryError('Error al recuperar la contraseña. Por favor, intente nuevamente.')
+      setRecoveryEmail('')
     } finally {
       setRecoveryLoading(false)
     }
