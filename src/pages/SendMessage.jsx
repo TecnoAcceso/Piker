@@ -20,6 +20,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import CustomAlert from '../components/CustomAlert'
 import QRScanner from '../components/QRScanner'
+import { sendTwilioWhatsApp } from '../lib/twilioService'
 
 const messageTypeInfo = {
   received: {
@@ -192,12 +193,12 @@ export default function SendMessage() {
 
         if (licenses && licenses.length > 0) {
           const license = licenses[0]
-          // Verificar que tenga configuración de WhatsApp
-          if (license.whatsapp_access_token && license.whatsapp_phone_number_id) {
+          // Verificar que tenga configuración de Twilio
+          if (license.twilio_account_sid && license.twilio_auth_token && license.twilio_whatsapp_number) {
             setUserLicense(license)
-            console.log('✅ Licencia con WhatsApp configurado:', license.license_key)
+            console.log('✅ Licencia con Twilio configurado:', license.license_key)
           } else {
-            console.warn('⚠️ Licencia sin configuración de WhatsApp')
+            console.warn('⚠️ Licencia sin configuración de Twilio')
             setUserLicense(null)
           }
         } else {
@@ -730,11 +731,11 @@ export default function SendMessage() {
       return
     }
 
-    // Verificar que el usuario tenga licencia con configuración de WhatsApp
-    if (!userLicense || !userLicense.whatsapp_access_token || !userLicense.whatsapp_phone_number_id) {
+    // Verificar que el usuario tenga licencia con configuración de Twilio
+    if (!userLicense || !userLicense.twilio_account_sid || !userLicense.twilio_auth_token || !userLicense.twilio_whatsapp_number) {
       showAlert(
         'Configuración requerida',
-        'Tu licencia no tiene configuración de WhatsApp Business API. Por favor, contacta al administrador.',
+        'Tu licencia no tiene configuración de Twilio WhatsApp. Por favor, contacta al administrador.',
         'error'
       )
       return
@@ -743,33 +744,23 @@ export default function SendMessage() {
     setSending(true)
 
     try {
-      // Enviar mensajes usando la API de WhatsApp Business
+      // Enviar mensajes usando Twilio WhatsApp API
       const results = await Promise.all(
         phoneNumbers.map(async (phone) => {
           try {
-            // Llamada real a la API de WhatsApp Business
-            const response = await fetch(
-              `https://graph.facebook.com/v18.0/${userLicense.whatsapp_phone_number_id}/messages`,
-              {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${userLicense.whatsapp_access_token}`,
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                  messaging_product: 'whatsapp',
-                  to: phone.number,
-                  type: 'text',
-                  text: { body: customMessage }
-                })
-              }
-            )
+            // Llamada a Twilio API
+            const result = await sendTwilioWhatsApp({
+              accountSid: userLicense.twilio_account_sid,
+              authToken: userLicense.twilio_auth_token,
+              fromNumber: userLicense.twilio_whatsapp_number,
+              toNumber: phone.number,
+              message: customMessage,
+              messagingServiceSid: userLicense.twilio_messaging_service_sid || undefined
+            })
 
-            const responseData = await response.json()
-
-            if (!response.ok) {
-              console.error(`Error API WhatsApp para ${phone.number}:`, responseData)
-              throw new Error(responseData.error?.message || 'Error al enviar mensaje')
+            if (!result.success) {
+              console.error(`Error Twilio API para ${phone.number}:`, result.error)
+              throw new Error(result.error || 'Error al enviar mensaje')
             }
 
             // Log to database

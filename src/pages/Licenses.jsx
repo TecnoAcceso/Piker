@@ -28,7 +28,11 @@ export default function Licenses() {
     user_id: '',
     plan_type: 'basic',
     message_limit: 1000,
-    valid_until: ''
+    valid_until: '',
+    twilio_account_sid: '',
+    twilio_auth_token: '',
+    twilio_whatsapp_number: '',
+    twilio_messaging_service_sid: ''
   })
 
   useEffect(() => {
@@ -148,8 +152,8 @@ export default function Licenses() {
       }
 
       if (editingLicense) {
-        // Verificar si tiene configuración de WhatsApp completa
-        const hasConfig = formData.whatsapp_access_token && formData.whatsapp_phone_number_id
+        // Verificar si tiene configuración de Twilio completa
+        const hasConfig = formData.twilio_account_sid && formData.twilio_auth_token && formData.twilio_whatsapp_number
         
         // Update existing license
         const { error } = await supabase
@@ -159,10 +163,11 @@ export default function Licenses() {
             plan_type: formData.plan_type,
             message_limit: formData.message_limit,
             valid_until: formData.valid_until,
-            whatsapp_access_token: formData.whatsapp_access_token || null,
-            whatsapp_phone_number_id: formData.whatsapp_phone_number_id || null,
-            whatsapp_business_account_id: formData.whatsapp_business_account_id || null,
-            is_active: hasConfig // Solo activa si tiene configuración de WhatsApp
+            twilio_account_sid: formData.twilio_account_sid || null,
+            twilio_auth_token: formData.twilio_auth_token || null,
+            twilio_whatsapp_number: formData.twilio_whatsapp_number || null,
+            twilio_messaging_service_sid: formData.twilio_messaging_service_sid || null,
+            is_active: hasConfig // Solo activa si tiene configuración de Twilio
           })
           .eq('id', editingLicense.id)
 
@@ -176,8 +181,8 @@ export default function Licenses() {
           return
         }
       } else {
-        // Verificar si tiene configuración de WhatsApp completa
-        const hasConfig = formData.whatsapp_access_token && formData.whatsapp_phone_number_id
+        // Verificar si tiene configuración de Twilio completa
+        const hasConfig = formData.twilio_account_sid && formData.twilio_auth_token && formData.twilio_whatsapp_number
         
         // Create new license
         const { error } = await supabase
@@ -188,10 +193,11 @@ export default function Licenses() {
             plan_type: formData.plan_type,
             message_limit: formData.message_limit,
             valid_until: formData.valid_until,
-            whatsapp_access_token: formData.whatsapp_access_token || null,
-            whatsapp_phone_number_id: formData.whatsapp_phone_number_id || null,
-            whatsapp_business_account_id: formData.whatsapp_business_account_id || null,
-            is_active: hasConfig // Solo activa si tiene configuración de WhatsApp
+            twilio_account_sid: formData.twilio_account_sid || null,
+            twilio_auth_token: formData.twilio_auth_token || null,
+            twilio_whatsapp_number: formData.twilio_whatsapp_number || null,
+            twilio_messaging_service_sid: formData.twilio_messaging_service_sid || null,
+            is_active: hasConfig // Solo activa si tiene configuración de Twilio
           }])
 
         if (error) {
@@ -242,9 +248,10 @@ export default function Licenses() {
       plan_type: license.plan_type,
       message_limit: license.message_limit,
       valid_until: license.valid_until ? license.valid_until.split('T')[0] : '',
-      whatsapp_access_token: license.whatsapp_access_token || '',
-      whatsapp_phone_number_id: license.whatsapp_phone_number_id || '',
-      whatsapp_business_account_id: license.whatsapp_business_account_id || ''
+      twilio_account_sid: license.twilio_account_sid || '',
+      twilio_auth_token: license.twilio_auth_token || '',
+      twilio_whatsapp_number: license.twilio_whatsapp_number || '',
+      twilio_messaging_service_sid: license.twilio_messaging_service_sid || ''
     })
     setShowModal(true)
   }
@@ -258,9 +265,10 @@ export default function Licenses() {
       plan_type: 'basic',
       message_limit: 1000,
       valid_until: '',
-      whatsapp_access_token: '',
-      whatsapp_phone_number_id: '',
-      whatsapp_business_account_id: ''
+      twilio_account_sid: '',
+      twilio_auth_token: '',
+      twilio_whatsapp_number: '',
+      twilio_messaging_service_sid: ''
     })
     // Refrescar usuarios cuando se cierra el modal
     await fetchUsers()
@@ -286,9 +294,10 @@ export default function Licenses() {
       plan_type: 'basic',
       message_limit: 1000,
       valid_until: '',
-      whatsapp_access_token: '',
-      whatsapp_phone_number_id: '',
-      whatsapp_business_account_id: ''
+      twilio_account_sid: '',
+      twilio_auth_token: '',
+      twilio_whatsapp_number: '',
+      twilio_messaging_service_sid: ''
     })
     // Refrescar usuarios para mostrar solo los que no tienen licencia
     await fetchUsers()
@@ -321,8 +330,8 @@ export default function Licenses() {
 
   // Función para obtener el estado real de la licencia
   const getLicenseStatus = (license) => {
-    // Si no tiene configuración de WhatsApp, está pendiente
-    if (!hasWhatsAppConfig(license)) {
+    // Si no tiene configuración de Twilio, está pendiente
+    if (!hasTwilioConfig(license)) {
       return { status: 'pending_api', label: 'PENDIENTE API', color: 'yellow', days: null }
     }
 
@@ -351,14 +360,14 @@ export default function Licenses() {
     return { status: 'active', label: 'ACTIVA', color: 'green', days: daysRemaining }
   }
 
-  // Función para verificar si la licencia tiene configuración completa de WhatsApp
-  const hasWhatsAppConfig = (license) => {
-    return !!(license.whatsapp_access_token && license.whatsapp_phone_number_id)
+  // Función para verificar si la licencia tiene configuración completa de Twilio
+  const hasTwilioConfig = (license) => {
+    return !!(license.twilio_account_sid && license.twilio_auth_token && license.twilio_whatsapp_number)
   }
 
-  // Función para obtener el estado de configuración de WhatsApp
-  const getWhatsAppStatus = (license) => {
-    if (!hasWhatsAppConfig(license)) {
+  // Función para obtener el estado de configuración de Twilio
+  const getTwilioStatus = (license) => {
+    if (!hasTwilioConfig(license)) {
       return { status: 'pending', label: 'PENDIENTE API', color: 'yellow' }
     }
     return { status: 'configured', label: 'API CONFIGURADA', color: 'green' }
@@ -759,71 +768,89 @@ export default function Licenses() {
                     </div>
                   </div>
 
-                  {/* Separador para WhatsApp API */}
+                  {/* Separador para Twilio WhatsApp API */}
                   <div className="border-t border-gray-700 pt-4 mt-4">
                     <h3 className="text-sm font-semibold text-luxury-white mb-3">
-                      Configuración WhatsApp Business API
+                      Configuración Twilio WhatsApp
                     </h3>
                     <p className="text-xs text-gray-400 mb-4">
                       La licencia quedará en estado "Pendiente conexión API" hasta que se configuren estos datos. El usuario no podrá usar la app hasta que se complete la configuración.
                     </p>
 
-                    {/* WhatsApp Access Token */}
+                    {/* Twilio Account SID */}
                     <div className="mb-4">
                       <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Access Token
-                        <span className="text-gray-500 text-xs ml-1">(Opcional - se puede agregar después)</span>
-                      </label>
-                      <input
-                        type="password"
-                        value={formData.whatsapp_access_token}
-                        onChange={(e) => setFormData({ ...formData, whatsapp_access_token: e.target.value })}
-                        className="input-luxury font-mono text-sm"
-                        placeholder="EAAxxxxxxxxxxxxx"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                        Token de acceso de Meta Business Suite → App → WhatsApp → API Setup
-                      </p>
-                    </div>
-
-                    {/* WhatsApp Phone Number ID */}
-                    <div className="mb-4">
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Phone Number ID
-                        <span className="text-gray-500 text-xs ml-1">(Opcional - se puede agregar después)</span>
+                        Account SID
+                        <span className="text-gray-500 text-xs ml-1">(Requerido)</span>
                       </label>
                       <input
                         type="text"
-                        value={formData.whatsapp_phone_number_id}
-                        onChange={(e) => setFormData({ ...formData, whatsapp_phone_number_id: e.target.value })}
+                        value={formData.twilio_account_sid}
+                        onChange={(e) => setFormData({ ...formData, twilio_account_sid: e.target.value })}
                         className="input-luxury font-mono text-sm"
-                        placeholder="123456789012345"
+                        placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
                       />
                       <p className="text-xs text-gray-500 mt-1">
-                        ID del número de teléfono en Meta Business Suite → WhatsApp → API Setup
+                        Account SID de Twilio (comienza con "AC"). Encuéntralo en tu Dashboard de Twilio.
                       </p>
                     </div>
 
-                    {/* WhatsApp Business Account ID */}
+                    {/* Twilio Auth Token */}
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Auth Token
+                        <span className="text-gray-500 text-xs ml-1">(Requerido)</span>
+                      </label>
+                      <input
+                        type="password"
+                        value={formData.twilio_auth_token}
+                        onChange={(e) => setFormData({ ...formData, twilio_auth_token: e.target.value })}
+                        className="input-luxury font-mono text-sm"
+                        placeholder="Tu Auth Token secreto"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Auth Token de Twilio (secreto). Encuéntralo en tu Dashboard de Twilio.
+                      </p>
+                    </div>
+
+                    {/* Twilio WhatsApp Number */}
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        WhatsApp Number
+                        <span className="text-gray-500 text-xs ml-1">(Requerido)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.twilio_whatsapp_number}
+                        onChange={(e) => setFormData({ ...formData, twilio_whatsapp_number: e.target.value })}
+                        className="input-luxury font-mono text-sm"
+                        placeholder="+1234567890 o whatsapp:+1234567890"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Número de WhatsApp de Twilio en formato E.164 (ej: +1234567890). Puedes usar "whatsapp:" como prefijo o no.
+                      </p>
+                    </div>
+
+                    {/* Twilio Messaging Service SID */}
                     <div>
                       <label className="block text-sm font-medium text-gray-300 mb-2">
-                        WhatsApp Business Account ID (WABA ID)
+                        Messaging Service SID
                         <span className="text-gray-500 text-xs ml-1">(Opcional)</span>
                       </label>
                       <input
                         type="text"
-                        value={formData.whatsapp_business_account_id}
-                        onChange={(e) => setFormData({ ...formData, whatsapp_business_account_id: e.target.value })}
+                        value={formData.twilio_messaging_service_sid}
+                        onChange={(e) => setFormData({ ...formData, twilio_messaging_service_sid: e.target.value })}
                         className="input-luxury font-mono text-sm"
-                        placeholder="123456789012345"
+                        placeholder="MGxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
                       />
                       <p className="text-xs text-gray-500 mt-1">
-                        ID de la cuenta de negocio de WhatsApp (opcional pero recomendado)
+                        Messaging Service SID de Twilio (opcional, comienza con "MG"). Permite usar múltiples números.
                       </p>
                     </div>
 
                     {/* Estado de configuración */}
-                    {formData.whatsapp_access_token && formData.whatsapp_phone_number_id ? (
+                    {formData.twilio_account_sid && formData.twilio_auth_token && formData.twilio_whatsapp_number ? (
                       <div className="mt-4 p-3 rounded-lg bg-green-500/10 border border-green-500/30">
                         <div className="flex items-center space-x-2">
                           <CheckCircle className="w-4 h-4 text-green-400" />
@@ -837,7 +864,7 @@ export default function Licenses() {
                         <div className="flex items-center space-x-2">
                           <Clock className="w-4 h-4 text-yellow-400" />
                           <p className="text-xs text-yellow-400 font-medium">
-                            Pendiente configuración API. La licencia quedará inactiva hasta completar Access Token y Phone Number ID.
+                            Pendiente configuración API. La licencia quedará inactiva hasta completar Account SID, Auth Token y WhatsApp Number.
                           </p>
                         </div>
                       </div>

@@ -1,6 +1,6 @@
 # Piker - Sistema de Mensajería Certificada
 
-Aplicación premium de distribución y logística para envío masivo de mensajes certificados vía WhatsApp Business API.
+Aplicación premium de distribución y logística para envío masivo de mensajes certificados vía Twilio WhatsApp.
 
 ## 🚀 Características
 
@@ -18,7 +18,7 @@ Aplicación premium de distribución y logística para envío masivo de mensajes
 
 - Node.js 18+ y npm
 - Cuenta de Supabase
-- Cuenta de WhatsApp Business API (Meta)
+- Cuenta de Twilio con WhatsApp habilitado
 - Cuenta de Vercel (para deployment)
 - Git
 
@@ -90,9 +90,8 @@ Edita `.env` con tus credenciales:
 VITE_SUPABASE_URL=https://tu-proyecto.supabase.co
 VITE_SUPABASE_ANON_KEY=tu_anon_key_aqui
 
-# WhatsApp Business API (Meta)
-VITE_META_API_TOKEN=tu_token_de_meta
-VITE_META_PHONE_NUMBER_ID=tu_phone_number_id
+# Twilio WhatsApp (configurado por licencia en la aplicación)
+# Las credenciales de Twilio se configuran por licencia en el panel de administración
 
 # Resend Email Service (para recuperación de contraseña/usuario)
 # Obtén tu API key en: https://resend.com/api-keys
@@ -137,8 +136,7 @@ La aplicación estará disponible en `http://localhost:5173`
    - Agrega todas las variables del archivo `.env`:
      - `VITE_SUPABASE_URL`
      - `VITE_SUPABASE_ANON_KEY`
-     - `VITE_META_API_TOKEN`
-     - `VITE_META_PHONE_NUMBER_ID`
+     # Las credenciales de Twilio se configuran por licencia en la aplicación
 
 4. **Deploy**:
    - Click en "Deploy"
@@ -299,40 +297,44 @@ npm run lint
 - Confirma que el índice `idx_sent_log_user_phone_type_date` está creado
 - Revisa la fecha del sistema
 
-## 📞 Integración con WhatsApp Business API
+## 📞 Integración con Twilio WhatsApp
 
-### Configuración de Meta (Facebook)
+### Configuración de Twilio
 
-1. **Crear App en Meta for Developers**:
-   - Ve a [https://developers.facebook.com](https://developers.facebook.com)
-   - Crea una nueva app tipo "Business"
+1. **Crear cuenta en Twilio**:
+   - Ve a [https://www.twilio.com](https://www.twilio.com)
+   - Crea una cuenta gratuita o de pago
+   - Verifica tu número de teléfono
 
-2. **Configurar WhatsApp Business**:
-   - Agrega el producto "WhatsApp"
-   - Obtén tu Phone Number ID
-   - Genera un token permanente
+2. **Configurar WhatsApp en Twilio**:
+   - Ve a **Messaging** → **Try it out** → **Send a WhatsApp message**
+   - Sigue el proceso de configuración de WhatsApp
+   - Obtén tu número de WhatsApp de Twilio (formato: `+1234567890`)
 
-3. **Actualizar el código de envío**:
-   En `SendMessage.jsx`, descomenta y configura la llamada a la API:
+3. **Obtener credenciales**:
+   - **Account SID**: Encuéntralo en el Dashboard (comienza con `AC...`)
+   - **Auth Token**: Encuéntralo en el Dashboard (secreto)
+   - **WhatsApp Number**: Tu número de WhatsApp de Twilio
+   - **Messaging Service SID** (opcional): Para usar múltiples números (comienza con `MG...`)
 
-```javascript
-const response = await fetch(
-  `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`,
-  {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiToken}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      messaging_product: 'whatsapp',
-      to: phone.number,
-      type: 'text',
-      text: { body: customMessage }
-    })
-  }
-)
-```
+4. **Configurar en la aplicación**:
+   - Ve al panel de **Licencias** (requiere rol System Admin)
+   - Crea o edita una licencia
+   - Completa los campos de configuración de Twilio:
+     - Account SID
+     - Auth Token
+     - WhatsApp Number
+     - Messaging Service SID (opcional)
+
+### Formato de Números
+
+- **Entrada**: Acepta `+584245939950` o `04245939950` (se convierte automáticamente)
+- **Twilio**: Requiere formato `whatsapp:+584245939950`
+- El servicio maneja la conversión automáticamente
+
+### Documentación
+
+Para más detalles sobre la migración, consulta [TWILIO_MIGRATION.md](./TWILIO_MIGRATION.md)
 
 ## 🤝 Contribución
 

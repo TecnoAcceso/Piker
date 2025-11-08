@@ -113,9 +113,9 @@ export const AuthProvider = ({ children }) => {
       const license = licenses[0]
       console.log('📅 Licencia encontrada - valid_until:', license.valid_until, 'tipo:', typeof license.valid_until)
       
-      // Verificar que tenga configuración de WhatsApp
-      if (!license.whatsapp_access_token || !license.whatsapp_phone_number_id) {
-        console.warn('⚠️ Usuario tiene licencia pero falta configuración de WhatsApp API')
+      // Verificar que tenga configuración de Twilio
+      if (!license.twilio_account_sid || !license.twilio_auth_token || !license.twilio_whatsapp_number) {
+        console.warn('⚠️ Usuario tiene licencia pero falta configuración de Twilio API')
         return { hasLicense: false, license: null, error: 'LICENSE_PENDING_API' }
       }
       
