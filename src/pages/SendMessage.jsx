@@ -50,6 +50,8 @@ export default function SendMessage() {
   const [customMessage, setCustomMessage] = useState('')
   const [sending, setSending] = useState(false)
   const [showQRScanner, setShowQRScanner] = useState(false)
+  const [userLicense, setUserLicense] = useState(null)
+  const [loadingLicense, setLoadingLicense] = useState(true)
   const [alert, setAlert] = useState({ isOpen: false, title: '', message: '', type: 'info' })
   const [showTemplateDropdown, setShowTemplateDropdown] = useState(false)
   const [pendingNavigation, setPendingNavigation] = useState(null)
@@ -165,6 +167,52 @@ export default function SendMessage() {
     window.addEventListener('beforeunload', handleBeforeUnload)
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
   }, [phoneNumbers.length, customMessage, selectedTemplate])
+
+  // Obtener licencia del usuario con datos de WhatsApp
+  useEffect(() => {
+    const fetchUserLicense = async () => {
+      if (!profile?.id) return
+
+      try {
+        setLoadingLicense(true)
+        // Obtener licencia activa del usuario
+        const { data: licenses, error } = await supabase
+          .from('licenses')
+          .select('*')
+          .eq('user_id', profile.id)
+          .eq('is_active', true)
+          .order('valid_until', { ascending: false })
+          .limit(1)
+
+        if (error) {
+          console.error('Error obteniendo licencia:', error)
+          return
+        }
+
+        if (licenses && licenses.length > 0) {
+          const license = licenses[0]
+          // Verificar que tenga configuración de WhatsApp
+          if (license.whatsapp_access_token && license.whatsapp_phone_number_id) {
+            setUserLicense(license)
+            console.log('✅ Licencia con WhatsApp configurado:', license.license_key)
+          } else {
+            console.warn('⚠️ Licencia sin configuración de WhatsApp')
+            setUserLicense(null)
+          }
+        } else {
+          console.warn('⚠️ Usuario no tiene licencia activa')
+          setUserLicense(null)
+        }
+      } catch (error) {
+        console.error('Error obteniendo licencia:', error)
+        setUserLicense(null)
+      } finally {
+        setLoadingLicense(false)
+      }
+    }
+
+    fetchUserLicense()
+  }, [profile?.id])
 
   // Fetch templates and reset data when type changes (only if confirmed)
   useEffect(() => {
@@ -681,31 +729,47 @@ export default function SendMessage() {
       return
     }
 
+    // Verificar que el usuario tenga licencia con configuración de WhatsApp
+    if (!userLicense || !userLicense.whatsapp_access_token || !userLicense.whatsapp_phone_number_id) {
+      showAlert(
+        'Configuración requerida',
+        'Tu licencia no tiene configuración de WhatsApp Business API. Por favor, contacta al administrador.',
+        'error'
+      )
+      return
+    }
+
     setSending(true)
 
     try {
-      // Simulate sending via WhatsApp API
-      // In production, this would call the Meta WhatsApp Business API
+      // Enviar mensajes usando la API de WhatsApp Business
       const results = await Promise.all(
         phoneNumbers.map(async (phone) => {
           try {
-            // Simulate API call delay
-            await new Promise(resolve => setTimeout(resolve, 500))
+            // Llamada real a la API de WhatsApp Business
+            const response = await fetch(
+              `https://graph.facebook.com/v18.0/${userLicense.whatsapp_phone_number_id}/messages`,
+              {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${userLicense.whatsapp_access_token}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  messaging_product: 'whatsapp',
+                  to: phone.number,
+                  type: 'text',
+                  text: { body: customMessage }
+                })
+              }
+            )
 
-            // Here you would call the actual WhatsApp API
-            // const response = await fetch('https://graph.facebook.com/v18.0/YOUR_PHONE_NUMBER_ID/messages', {
-            //   method: 'POST',
-            //   headers: {
-            //     'Authorization': `Bearer ${import.meta.env.VITE_META_API_TOKEN}`,
-            //     'Content-Type': 'application/json'
-            //   },
-            //   body: JSON.stringify({
-            //     messaging_product: 'whatsapp',
-            //     to: phone.number,
-            //     type: 'text',
-            //     text: { body: customMessage }
-            //   })
-            // })
+            const responseData = await response.json()
+
+            if (!response.ok) {
+              console.error(`Error API WhatsApp para ${phone.number}:`, responseData)
+              throw new Error(responseData.error?.message || 'Error al enviar mensaje')
+            }
 
             // Log to database
             const { error } = await supabase
@@ -724,6 +788,23 @@ export default function SendMessage() {
             return { id: phone.id, success: true }
           } catch (error) {
             console.error(`Error sending to ${phone.number}:`, error)
+            
+            // Log error to database
+            try {
+              await supabase
+                .from('sent_log')
+                .insert([{
+                  user_id: profile.id,
+                  phone_number: phone.number,
+                  message_type: type,
+                  message_content: customMessage,
+                  status: 'failed',
+                  sent_date: new Date().toISOString().split('T')[0]
+                }])
+            } catch (logError) {
+              console.error('Error logging failed message:', logError)
+            }
+
             return { id: phone.id, success: false, error: error.message }
           }
         })

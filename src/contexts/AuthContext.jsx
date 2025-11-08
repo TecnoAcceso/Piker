@@ -107,6 +107,12 @@ export const AuthProvider = ({ children }) => {
       const license = licenses[0]
       console.log('📅 Licencia encontrada - valid_until:', license.valid_until, 'tipo:', typeof license.valid_until)
       
+      // Verificar que tenga configuración de WhatsApp
+      if (!license.whatsapp_access_token || !license.whatsapp_phone_number_id) {
+        console.warn('⚠️ Usuario tiene licencia pero falta configuración de WhatsApp API')
+        return { hasLicense: false, license: null, error: 'LICENSE_PENDING_API' }
+      }
+      
       if (license.valid_until) {
         // Convertir a Date object
         let validUntil
@@ -243,8 +249,9 @@ export const AuthProvider = ({ children }) => {
           
           if (!licenseCheckExact.hasLicense) {
             console.warn('❌ Usuario no tiene licencia activa')
-            const licenseError = new Error('LICENSE_REQUIRED')
-            licenseError.code = 'LICENSE_REQUIRED'
+            // Verificar si es error de configuración pendiente de API
+            const licenseError = new Error(licenseCheckExact.error === 'LICENSE_PENDING_API' ? 'LICENSE_PENDING_API' : 'LICENSE_REQUIRED')
+            licenseError.code = licenseCheckExact.error === 'LICENSE_PENDING_API' ? 'LICENSE_PENDING_API' : 'LICENSE_REQUIRED'
             licenseError.userProfile = userProfile
             throw licenseError
           }
@@ -305,9 +312,9 @@ export const AuthProvider = ({ children }) => {
       
       if (!licenseCheck.hasLicense) {
         console.warn('❌ Usuario no tiene licencia activa')
-        // Crear error especial para manejar en el componente de login
-        const licenseError = new Error('LICENSE_REQUIRED')
-        licenseError.code = 'LICENSE_REQUIRED'
+        // Verificar si es error de configuración pendiente de API
+        const licenseError = new Error(licenseCheck.error === 'LICENSE_PENDING_API' ? 'LICENSE_PENDING_API' : 'LICENSE_REQUIRED')
+        licenseError.code = licenseCheck.error === 'LICENSE_PENDING_API' ? 'LICENSE_PENDING_API' : 'LICENSE_REQUIRED'
         licenseError.userProfile = userProfile
         throw licenseError
       }
@@ -327,7 +334,15 @@ export const AuthProvider = ({ children }) => {
       return { data: { user: userProfile }, error: null }
     } catch (error) {
       console.error('❌ Error:', error)
-      return { data: null, error }
+      setLoading(false)
+      
+      // Si es un error de licencia, propagarlo correctamente
+      if (error.code === 'LICENSE_REQUIRED' || error.code === 'LICENSE_PENDING_API') {
+        return { data: null, error: { code: error.code, message: error.message || error.code } }
+      }
+      
+      // Para otros errores, devolver el mensaje genérico
+      return { data: null, error: { code: 'LOGIN_ERROR', message: 'Usuario o contraseña incorrectos' } }
     }
   }
 

@@ -1,36 +1,34 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { User, Lock, Loader2, Shield, Mail } from 'lucide-react'
+import { User, Lock, Loader2, Shield, MessageCircle, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import CustomAlert from '../components/CustomAlert'
-import { supabase } from '../lib/supabase'
 
 export default function Login() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [showLicenseAlert, setShowLicenseAlert] = useState(false)
-  const [adminContact, setAdminContact] = useState(null)
+  const [showPendingApiAlert, setShowPendingApiAlert] = useState(false)
   const { signIn } = useAuth()
   const navigate = useNavigate()
 
-  const fetchAdminContact = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('email, full_name')
-        .eq('role', 'system_admin')
-        .limit(1)
-        .single()
+  // Contactos de soporte WhatsApp
+  const supportContacts = [
+    { name: 'Ing. Dorante', phone: '584120557690' },
+    { name: 'Ing. Morandin', phone: '584120552926' }
+  ]
 
-      if (!error && data) {
-        setAdminContact(data)
-      }
-    } catch (err) {
-      console.error('Error fetching admin contact:', err)
+  // Mensajes predefinidos según el tipo de alert
+  const getWhatsAppMessage = (alertType) => {
+    const messages = {
+      license_required: 'Hola, necesito ayuda con mi licencia en la aplicación Piker. Mi cuenta no tiene una licencia activa y necesito que me asignen una.',
+      pending_api: 'Hola, necesito ayuda con la configuración de WhatsApp Business API en la aplicación Piker. Mi licencia está creada pero está pendiente de configuración.'
     }
+    return encodeURIComponent(messages[alertType] || 'Hola, necesito ayuda con mi cuenta en la aplicación Piker.')
   }
 
   const handleSubmit = async (e) => {
@@ -38,6 +36,7 @@ export default function Login() {
     setError('')
     setLoading(true)
     setShowLicenseAlert(false)
+    setShowPendingApiAlert(false)
 
     try {
       const { data, error } = await signIn(username, password)
@@ -45,11 +44,18 @@ export default function Login() {
       if (error) {
         // Verificar si es error de licencia
         if (error.code === 'LICENSE_REQUIRED' || error.message === 'LICENSE_REQUIRED') {
-          await fetchAdminContact()
           setShowLicenseAlert(true)
+          setLoading(false)
+          return
+        }
+        // Verificar si es error de licencia pendiente de API
+        if (error.code === 'LICENSE_PENDING_API' || error.message === 'LICENSE_PENDING_API') {
+          setShowPendingApiAlert(true)
+          setLoading(false)
           return
         }
         setError(error.message)
+        setLoading(false)
         return
       }
 
@@ -57,9 +63,11 @@ export default function Login() {
         navigate('/dashboard')
       }
     } catch (err) {
+      console.error('Error en login:', err)
       if (err.code === 'LICENSE_REQUIRED' || err.message === 'LICENSE_REQUIRED') {
-        await fetchAdminContact()
         setShowLicenseAlert(true)
+      } else if (err.code === 'LICENSE_PENDING_API' || err.message === 'LICENSE_PENDING_API') {
+        setShowPendingApiAlert(true)
       } else {
         setError('Error al iniciar sesión. Por favor, intente nuevamente.')
       }
@@ -96,16 +104,16 @@ export default function Login() {
       >
         {/* Logo and Title */}
         <div className="text-center mb-8">
-          <div className="relative inline-block mb-6">
+          <div className="relative inline-block mb-0">
             {/* Logo Container - Simple with glow effect */}
             <div className="relative inline-flex items-center justify-center">
               {/* Intenta cargar el logo, si no existe muestra el icono */}
               <img
                 src="/logo.png"
                 alt="Logo"
-                className="w-80 h-auto object-contain"
+                className="w-64 h-auto object-contain"
                 style={{
-                  filter: 'drop-shadow(0 0 20px rgba(228, 0, 59, 0.4)) drop-shadow(0 0 40px rgba(228, 0, 59, 0.2))',
+                  filter: 'drop-shadow(0 0 20px rgba(255, 255, 255, 0.4)) drop-shadow(0 0 40px rgba(255, 255, 255, 0.2))',
                 }}
                 onError={(e) => {
                   e.target.style.display = 'none';
@@ -115,7 +123,7 @@ export default function Login() {
               <div
                 className="hidden items-center justify-center w-20 h-20 rounded-xl bg-gradient-to-br from-luxury-raspberry to-luxury-raspberryDark"
                 style={{
-                  filter: 'drop-shadow(0 0 20px rgba(228, 0, 59, 0.4))',
+                  filter: 'drop-shadow(0 0 20px rgba(255, 255, 255, 0.4))',
                 }}
               >
                 <Shield
@@ -126,11 +134,29 @@ export default function Login() {
             </div>
           </div>
 
-          <h1 className="text-5xl font-display font-bold gradient-text mb-2 tracking-tight">
-            Piker
-          </h1>
+          <div className="flex items-center justify-center gap-2 mb-0">
+            <img
+              src="/palabra.png"
+              alt="Piker"
+              className="h-12 object-contain"
+              style={{
+                filter: 'drop-shadow(0 0 10px rgba(228, 0, 59, 0.3))',
+              }}
+              onError={(e) => {
+                e.target.style.display = 'none'
+              }}
+            />
+            <div className="flex flex-col items-start">
+              <span className="text-[10px] text-gray-500/40 font-light tracking-wider">
+                BETA
+              </span>
+              <span className="text-[9px] text-gray-500/30 font-light">
+                v1.0
+              </span>
+            </div>
+          </div>
 
-          <p className="text-gray-400 text-sm font-light">
+          <p className="text-gray-400 text-sm font-light mt-0">
             Sistema de Mensajería
           </p>
         </div>
@@ -157,7 +183,7 @@ export default function Login() {
                   Usuario
                 </label>
                 <div className="relative group">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-luxury-raspberry/70 w-4 h-4 z-10 group-hover:text-luxury-raspberry transition-colors" />
+                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-red-500 w-4 h-4 z-10 group-hover:text-red-600 transition-colors" />
                   <input
                     type="text"
                     value={username}
@@ -176,17 +202,28 @@ export default function Login() {
                   Contraseña
                 </label>
                 <div className="relative group">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-luxury-raspberry/70 w-4 h-4 z-10 group-hover:text-luxury-raspberry transition-colors" />
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-red-500 w-4 h-4 z-10 group-hover:text-red-600 transition-colors" />
                   <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="relative w-full pl-10 pr-4 py-2.5 bg-white border border-luxury-raspberry/20 rounded-lg text-gray-900 placeholder-gray-400 hover:border-luxury-raspberry/40 focus:border-luxury-raspberry focus:outline-none transition-all text-sm"
+                    className="relative w-full pl-10 pr-10 py-2.5 bg-white border border-luxury-raspberry/20 rounded-lg text-gray-900 placeholder-gray-400 hover:border-luxury-raspberry/40 focus:border-luxury-raspberry focus:outline-none transition-all text-sm"
                     placeholder="••••••••"
                     required
                     disabled={loading}
                     autoComplete="current-password"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-red-500 hover:text-red-600 transition-colors z-10"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
                 </div>
               </div>
 
@@ -234,35 +271,58 @@ export default function Login() {
             <p className="text-sm text-gray-300">
               Tu cuenta no tiene una licencia activa. Para acceder al sistema, necesitas una licencia válida asignada por el administrador.
             </p>
-            {adminContact && (
-              <div className="mt-4 pt-4 border-t border-gray-700">
-                <p className="text-xs font-semibold text-gray-400 mb-2">Contacta al administrador:</p>
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-2 text-sm text-gray-300">
-                    <Mail className="w-4 h-4 text-luxury-gold" />
-                    <a 
-                      href={`mailto:${adminContact.email}`}
-                      className="text-luxury-gold hover:text-luxury-brightBlue transition-colors"
-                    >
-                      {adminContact.email}
-                    </a>
-                  </div>
-                  {adminContact.full_name && (
-                    <p className="text-xs text-gray-400 ml-6">
-                      {adminContact.full_name}
-                    </p>
-                  )}
-                </div>
+            <div className="mt-4 pt-4 border-t border-gray-700">
+              <p className="text-xs font-semibold text-gray-400 mb-3">Contacta al administrador:</p>
+              <div className="flex items-center gap-4">
+                {supportContacts.map((contact, index) => (
+                  <a
+                    key={index}
+                    href={`https://wa.me/${contact.phone}?text=${getWhatsAppMessage('license_required')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center space-x-2 text-sm text-gray-300 hover:text-luxury-gold transition-colors group"
+                  >
+                    <MessageCircle className="w-4 h-4 text-green-500 group-hover:text-green-400 transition-colors" />
+                    <span className="font-medium">{contact.name}</span>
+                  </a>
+                ))}
               </div>
-            )}
-            {!adminContact && (
-              <p className="text-xs text-gray-500 mt-2">
-                Por favor, contacta al administrador del sistema para obtener una licencia.
-              </p>
-            )}
+            </div>
           </div>
         }
         type="error"
+      />
+
+      {/* Pending API Alert */}
+      <CustomAlert
+        isOpen={showPendingApiAlert}
+        onClose={() => setShowPendingApiAlert(false)}
+        title="Licencia Pendiente de Configuración"
+        message={
+          <div className="space-y-3">
+            <p className="text-sm text-gray-300">
+              Tu licencia está creada pero está pendiente de configuración de WhatsApp Business API. El administrador debe completar la configuración antes de que puedas usar la aplicación.
+            </p>
+            <div className="mt-4 pt-4 border-t border-gray-700">
+              <p className="text-xs font-semibold text-gray-400 mb-3">Contacta al administrador:</p>
+              <div className="flex items-center gap-4">
+                {supportContacts.map((contact, index) => (
+                  <a
+                    key={index}
+                    href={`https://wa.me/${contact.phone}?text=${getWhatsAppMessage('pending_api')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center space-x-2 text-sm text-gray-300 hover:text-luxury-gold transition-colors group"
+                  >
+                    <MessageCircle className="w-4 h-4 text-green-500 group-hover:text-green-400 transition-colors" />
+                    <span className="font-medium">{contact.name}</span>
+                  </a>
+                ))}
+              </div>
+            </div>
+          </div>
+        }
+        type="warning"
       />
     </div>
   )

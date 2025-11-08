@@ -487,7 +487,7 @@ export default function Layout({ children }) {
             <motion.img
               src="/palabra.png"
               alt="Piker"
-              className="h-16 w-auto object-contain"
+              className="h-6 w-auto object-contain"
               style={{
                 filter: 'drop-shadow(0 0 8px rgba(255, 255, 255, 0.6))',
               }}
