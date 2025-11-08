@@ -53,8 +53,9 @@ export default {
         }
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-        display: ['Playfair Display', 'Georgia', 'serif'],
+        sans: ['Inter', 'Poppins', 'system-ui', '-apple-system', 'sans-serif'],
+        display: ['Josefin Sans', 'Raleway', 'Inter', 'sans-serif'],
+        heading: ['Raleway', 'Inter', 'sans-serif'],
         mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
       },
       boxShadow: {

@@ -119,10 +119,10 @@ export default function History() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-display font-bold text-luxury-white mb-2">
+            <h1 className="text-2xl font-display font-bold text-luxury-white mb-0.5 tracking-tight">
               Historial de Mensajes
             </h1>
-            <p className="text-gray-400">
+            <p className="text-xs text-gray-400">
               Revisa todos los mensajes enviados
             </p>
           </div>
@@ -210,7 +210,7 @@ export default function History() {
           className="card-luxury"
         >
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-display font-semibold text-luxury-white">
+            <h2 className="text-xl font-heading font-semibold text-luxury-white">
               Mensajes ({filteredMessages.length})
             </h2>
           </div>

@@ -46,10 +46,10 @@ export default function SelectMessageType() {
     <Layout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-xl font-semibold text-luxury-white mb-1">
+          <h1 className="text-2xl font-display font-bold text-luxury-white mb-0.5 tracking-tight">
             Enviar Mensajes
           </h1>
-          <p className="text-sm text-gray-400">
+          <p className="text-xs text-gray-400">
             Selecciona el tipo de mensaje
           </p>
         </div>

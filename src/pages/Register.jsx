@@ -100,7 +100,7 @@ export default function Register() {
           >
             <Package className="w-10 h-10 text-luxury-black" />
           </motion.div>
-          <h1 className="text-4xl font-display font-bold gradient-text mb-2">
+          <h1 className="text-5xl font-display font-bold gradient-text mb-2 tracking-tight">
             Piker
           </h1>
           <p className="text-gray-400">
@@ -115,7 +115,7 @@ export default function Register() {
           transition={{ delay: 0.3 }}
           className="card-luxury"
         >
-          <h2 className="text-2xl font-display font-semibold text-luxury-white mb-6">
+          <h2 className="text-2xl font-heading font-semibold text-luxury-white mb-6">
             Registrarse
           </h2>
 

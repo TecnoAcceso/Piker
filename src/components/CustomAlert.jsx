@@ -1,7 +1,17 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { AlertTriangle, CheckCircle, Info, X } from 'lucide-react'
 
-export default function CustomAlert({ isOpen, onClose, title, message, type = 'info' }) {
+export default function CustomAlert({ 
+  isOpen, 
+  onClose, 
+  title, 
+  message, 
+  type = 'info',
+  showConfirm = false,
+  onConfirm,
+  confirmText = 'Confirmar',
+  cancelText = 'Cancelar'
+}) {
   const icons = {
     success: CheckCircle,
     error: AlertTriangle,
@@ -65,9 +75,9 @@ export default function CustomAlert({ isOpen, onClose, title, message, type = 'i
                   <h3 className="text-base font-semibold text-luxury-white mb-1">
                     {title}
                   </h3>
-                  <p className="text-sm text-gray-400">
-                    {message}
-                  </p>
+                  <div className="text-sm text-gray-400">
+                    {typeof message === 'string' ? <p>{message}</p> : message}
+                  </div>
                 </div>
                 <button
                   onClick={onClose}
@@ -76,13 +86,37 @@ export default function CustomAlert({ isOpen, onClose, title, message, type = 'i
                   <X className="w-5 h-5" />
                 </button>
               </div>
-              <div className="mt-4 flex justify-end">
-                <button
-                  onClick={onClose}
-                  className="px-4 py-2 bg-luxury-gold/10 text-luxury-gold rounded-lg hover:bg-luxury-gold/20 transition-colors text-sm font-medium"
-                >
-                  Entendido
-                </button>
+              <div className={`mt-4 flex ${showConfirm ? 'justify-end space-x-2' : 'justify-end'}`}>
+                {showConfirm ? (
+                  <>
+                    <button
+                      onClick={onClose}
+                      className="px-4 py-2 bg-luxury-gray text-gray-300 rounded-lg hover:bg-luxury-lightGray transition-colors text-sm font-medium"
+                    >
+                      {cancelText}
+                    </button>
+                    <button
+                      onClick={() => {
+                        onConfirm?.()
+                        onClose()
+                      }}
+                      className={`px-4 py-2 rounded-lg transition-colors text-sm font-medium ${
+                        type === 'warning' || type === 'error'
+                          ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
+                          : 'bg-luxury-gold/10 text-luxury-gold hover:bg-luxury-gold/20'
+                      }`}
+                    >
+                      {confirmText}
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={onClose}
+                    className="px-4 py-2 bg-luxury-gold/10 text-luxury-gold rounded-lg hover:bg-luxury-gold/20 transition-colors text-sm font-medium"
+                  >
+                    Entendido
+                  </button>
+                )}
               </div>
             </motion.div>
           </div>

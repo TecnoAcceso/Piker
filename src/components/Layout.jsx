@@ -12,16 +12,22 @@ import {
   X,
   LogOut,
   ChevronRight,
+  ChevronLeft,
   CheckCircle,
-  XCircle
+  XCircle,
+  Shield,
+  Zap,
+  Settings,
+  Info
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
+import UserProfileModal from './UserProfileModal'
 
 export default function Layout({ children }) {
   // Sidebar closed by default on mobile, open on desktop
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [license, setLicense] = useState(null)
+  const [profileModalOpen, setProfileModalOpen] = useState(false)
 
   // Open sidebar on desktop by default
   useEffect(() => {
@@ -42,33 +48,112 @@ export default function Layout({ children }) {
   }, [])
 
   const { profile, signOut, isSystemAdmin } = useAuth()
+  const [licenseStatus, setLicenseStatus] = useState({
+    hasLicense: false,
+    license: null,
+    loading: true
+  })
 
-  // Fetch license status
+  // Fetch license status con la misma lógica que AuthContext
   useEffect(() => {
-    const fetchLicense = async () => {
-      if (!profile?.id) return
+    const fetchLicenseStatus = async () => {
+      if (!profile?.id) {
+        setLicenseStatus({ hasLicense: false, license: null, loading: false })
+        return
+      }
+
+      // Los system_admin no necesitan licencia
+      if (profile.role === 'system_admin') {
+        setLicenseStatus({ 
+          hasLicense: true, 
+          license: { plan_type: 'system_admin', message_limit: '∞' }, 
+          loading: false 
+        })
+        return
+      }
 
       try {
-        const { data, error } = await supabase
+        setLicenseStatus(prev => ({ ...prev, loading: true }))
+        
+        // Obtener todas las licencias del usuario para debugging
+        const { data: allLicenses } = await supabase
+          .from('licenses')
+          .select('*')
+          .eq('user_id', profile.id)
+          .order('created_at', { ascending: false })
+
+        // Buscar licencia activa
+        const { data: licenses, error } = await supabase
           .from('licenses')
           .select('*')
           .eq('user_id', profile.id)
           .eq('is_active', true)
-          .gte('valid_until', new Date().toISOString())
           .order('valid_until', { ascending: false })
           .limit(1)
 
-        if (error) throw error
-        setLicense(data && data.length > 0 ? data[0] : null)
+        if (error) {
+          console.error('Error verificando licencia:', error)
+          setLicenseStatus({ hasLicense: false, license: null, loading: false })
+          return
+        }
+
+        if (!licenses || licenses.length === 0) {
+          setLicenseStatus({ hasLicense: false, license: null, loading: false })
+          return
+        }
+
+        const license = licenses[0]
+        
+        // Verificar fecha de validez
+        let isValid = true
+        if (license.valid_until) {
+          const validUntil = new Date(license.valid_until)
+          const today = new Date()
+          today.setHours(0, 0, 0, 0)
+          validUntil.setHours(0, 0, 0, 0)
+          
+          if (validUntil < today) {
+            isValid = false
+          }
+        }
+
+        setLicenseStatus({ 
+          hasLicense: isValid, 
+          license: isValid ? license : null, 
+          loading: false 
+        })
       } catch (error) {
-        console.error('Error fetching license:', error)
+        console.error('Error en fetchLicenseStatus:', error)
+        setLicenseStatus({ hasLicense: false, license: null, loading: false })
       }
     }
 
-    fetchLicense()
+    fetchLicenseStatus()
   }, [profile])
   const location = useLocation()
   const navigate = useNavigate()
+
+  // Close sidebar on mobile when route changes
+  useEffect(() => {
+    if (window.innerWidth < 1024) {
+      setSidebarOpen(false)
+    }
+  }, [location.pathname])
+
+  // Función para calcular días restantes de la licencia
+  const getDaysRemaining = (validUntil) => {
+    if (!validUntil) return null
+    
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const expiryDate = new Date(validUntil)
+    expiryDate.setHours(0, 0, 0, 0)
+    
+    const diffTime = expiryDate - today
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    
+    return diffDays
+  }
 
   const handleLogout = async () => {
     await signOut()
@@ -156,7 +241,7 @@ export default function Layout({ children }) {
                 >
                   <Package className="w-7 h-7 text-white drop-shadow-lg" />
                 </motion.div>
-                <span className="text-2xl font-display font-bold gradient-text">
+                <span className="text-3xl font-display font-bold gradient-text tracking-tight">
                   Piker
                 </span>
               </Link>
@@ -168,10 +253,10 @@ export default function Layout({ children }) {
                   border: '1px solid rgba(239, 68, 68, 0.3)',
                   color: '#f87171'
                 }}
-                whileHover={{ scale: 1.1, rotate: 90 }}
+                whileHover={{ scale: 1.1, x: -2 }}
                 whileTap={{ scale: 0.9 }}
               >
-                <X className="w-5 h-5" />
+                <ChevronLeft className="w-5 h-5" />
               </motion.button>
             </div>
 
@@ -278,12 +363,14 @@ export default function Layout({ children }) {
             {/* User Profile */}
             <div className="p-4 border-t" style={{ borderColor: 'rgba(59, 130, 246, 0.2)' }}>
               <motion.div
-                className="flex items-center space-x-3 mb-4 p-3 rounded-xl"
+                onClick={() => setProfileModalOpen(true)}
+                className="flex items-center space-x-3 mb-4 p-3 rounded-xl cursor-pointer relative"
                 style={{
                   background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(6, 182, 212, 0.1) 100%)',
                   border: '1px solid rgba(59, 130, 246, 0.2)'
                 }}
                 whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
               >
                 <motion.div
                   className="w-12 h-12 rounded-xl flex items-center justify-center relative flex-shrink-0"
@@ -297,13 +384,50 @@ export default function Layout({ children }) {
                   <span className="text-white font-bold text-lg drop-shadow-lg">
                     {profile?.full_name?.charAt(0).toUpperCase() || 'U'}
                   </span>
+                  {/* Burbuja de notificación */}
+                  <motion.div
+                    className="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center z-10"
+                    style={{
+                      background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
+                      boxShadow: '0 2px 8px rgba(251, 191, 36, 0.5), 0 0 0 2px rgba(15, 23, 42, 0.8)'
+                    }}
+                    animate={{ 
+                      scale: [1, 1.1, 1],
+                      boxShadow: [
+                        '0 2px 8px rgba(251, 191, 36, 0.5), 0 0 0 2px rgba(15, 23, 42, 0.8)',
+                        '0 4px 12px rgba(251, 191, 36, 0.7), 0 0 0 2px rgba(15, 23, 42, 0.8)',
+                        '0 2px 8px rgba(251, 191, 36, 0.5), 0 0 0 2px rgba(15, 23, 42, 0.8)'
+                      ]
+                    }}
+                    transition={{ 
+                      duration: 2,
+                      repeat: Infinity,
+                      ease: "easeInOut"
+                    }}
+                  >
+                    <Settings className="w-2.5 h-2.5 text-white" />
+                  </motion.div>
                 </motion.div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-luxury-white truncate">
-                    {profile?.full_name || 'Usuario'}
-                  </p>
+                  <div className="flex items-center space-x-2">
+                    <p className="text-sm font-bold text-luxury-white truncate">
+                      {profile?.full_name || 'Usuario'}
+                    </p>
+                    {/* Indicador de click */}
+                    <motion.div
+                      className="flex items-center space-x-1"
+                      initial={{ opacity: 0.6 }}
+                      animate={{ opacity: [0.6, 1, 0.6] }}
+                      transition={{ duration: 1.5, repeat: Infinity }}
+                    >
+                      <Info className="w-3 h-3 text-luxury-brightBlue" />
+                    </motion.div>
+                  </div>
                   <p className="text-xs text-luxury-brightBlue font-medium capitalize">
                     {profile?.role === 'system_admin' ? 'System Admin' : profile?.role}
+                  </p>
+                  <p className="text-[10px] text-gray-500 mt-0.5 italic">
+                    Click para ver perfil
                   </p>
                 </div>
               </motion.div>
@@ -355,7 +479,7 @@ export default function Layout({ children }) {
                 style={{ color: '#3b82f6' }}
               />
             </motion.button>
-            <h1 className="text-2xl font-display font-bold gradient-text">
+            <h1 className="text-3xl font-display font-bold gradient-text tracking-tight">
               Piker
             </h1>
           </div>
@@ -386,50 +510,132 @@ export default function Layout({ children }) {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-auto p-8 pb-16">
+        <main className="flex-1 overflow-auto p-4 md:p-8 pb-16 md:pb-14">
           {children}
         </main>
 
-        {/* Footer - Estilo Tiki */}
+        {/* Footer - Compacto y Premium */}
         <footer
-          className="border-t py-2 px-8 fixed bottom-0 left-0 right-0 z-30"
+          className="border-t py-1.5 px-3 md:px-6 fixed bottom-0 left-0 right-0 z-30"
           style={{
-            background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.98) 100%)',
-            backdropFilter: 'blur(20px)',
-            borderTop: '2px solid rgba(251, 191, 36, 0.3)',
-            boxShadow: '0 -4px 20px rgba(0, 0, 0, 0.3)'
+            background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.99) 0%, rgba(30, 41, 59, 0.99) 100%)',
+            backdropFilter: 'blur(24px)',
+            borderTop: '1px solid rgba(251, 191, 36, 0.3)',
+            boxShadow: '0 -4px 24px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(251, 191, 36, 0.1)'
           }}
         >
-          <div className="flex items-center justify-between">
-            {/* License Status */}
-            <div className="flex items-center space-x-2">
-              {license ? (
+          <div className="flex items-center justify-between gap-2 md:gap-4 overflow-hidden">
+            {/* License Status - Compacto con días restantes */}
+            <div className="flex items-center space-x-1.5 min-w-0 flex-shrink">
+              {licenseStatus.loading ? (
+                <div className="flex items-center space-x-1.5">
+                  <motion.div
+                    className="w-3 h-3 border-2 border-luxury-gold border-t-transparent rounded-full flex-shrink-0"
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                  />
+                  <span className="text-[10px] md:text-xs text-gray-400 font-medium whitespace-nowrap">Verificando...</span>
+                </div>
+              ) : licenseStatus.hasLicense ? (
                 <>
-                  <CheckCircle className="w-3.5 h-3.5 text-green-400" />
-                  <span className="text-xs text-gray-300">
-                    Licencia activa hasta{' '}
-                    <span className="text-green-400 font-semibold">
-                      {new Date(license.valid_until).toLocaleDateString('es-ES')}
-                    </span>
-                  </span>
+                  {profile?.role === 'system_admin' ? (
+                    <div className="flex items-center space-x-1.5 px-2 py-1 rounded-md"
+                      style={{
+                        background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(245, 158, 11, 0.1) 100%)',
+                        border: '1px solid rgba(251, 191, 36, 0.3)'
+                      }}
+                    >
+                      <Shield className="w-3 h-3 text-luxury-gold flex-shrink-0" />
+                      <span className="text-[10px] md:text-xs font-semibold text-luxury-gold whitespace-nowrap">System Admin</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center space-x-1.5 px-2 py-1 rounded-md"
+                      style={{
+                        background: (() => {
+                          const daysRemaining = licenseStatus.license?.valid_until ? getDaysRemaining(licenseStatus.license.valid_until) : null
+                          if (daysRemaining === null) return 'linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(22, 163, 74, 0.1) 100%)'
+                          if (daysRemaining > 7) return 'linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(22, 163, 74, 0.1) 100%)'
+                          if (daysRemaining >= 1) return 'linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(245, 158, 11, 0.1) 100%)'
+                          return 'linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(220, 38, 38, 0.1) 100%)'
+                        })(),
+                        border: (() => {
+                          const daysRemaining = licenseStatus.license?.valid_until ? getDaysRemaining(licenseStatus.license.valid_until) : null
+                          if (daysRemaining === null) return '1px solid rgba(34, 197, 94, 0.3)'
+                          if (daysRemaining > 7) return '1px solid rgba(34, 197, 94, 0.3)'
+                          if (daysRemaining >= 1) return '1px solid rgba(251, 191, 36, 0.3)'
+                          return '1px solid rgba(239, 68, 68, 0.3)'
+                        })()
+                      }}
+                    >
+                      <CheckCircle 
+                        className="w-3 h-3 flex-shrink-0"
+                        style={{
+                          color: (() => {
+                            const daysRemaining = licenseStatus.license?.valid_until ? getDaysRemaining(licenseStatus.license.valid_until) : null
+                            if (daysRemaining === null) return '#4ade80'
+                            if (daysRemaining > 7) return '#4ade80'
+                            if (daysRemaining >= 1) return '#fbbf24'
+                            return '#f87171'
+                          })()
+                        }}
+                      />
+                      <span 
+                        className="text-[10px] md:text-xs font-semibold whitespace-nowrap"
+                        style={{
+                          color: (() => {
+                            const daysRemaining = licenseStatus.license?.valid_until ? getDaysRemaining(licenseStatus.license.valid_until) : null
+                            if (daysRemaining === null) return '#4ade80'
+                            if (daysRemaining > 7) return '#4ade80'
+                            if (daysRemaining >= 1) return '#fbbf24'
+                            return '#f87171'
+                          })()
+                        }}
+                      >
+                        {licenseStatus.license?.valid_until && (() => {
+                          const daysRemaining = getDaysRemaining(licenseStatus.license.valid_until)
+                          if (daysRemaining !== null) {
+                            return daysRemaining === 0 ? 'Expira hoy' :
+                                   daysRemaining === 1 ? '1 día' :
+                                   daysRemaining < 0 ? 'Expirada' :
+                                   `${daysRemaining}d`
+                          }
+                          return 'Activa'
+                        })() || 'Activa'}
+                      </span>
+                    </div>
+                  )}
                 </>
               ) : (
-                <>
-                  <XCircle className="w-3.5 h-3.5 text-red-400" />
-                  <span className="text-xs text-red-400 font-semibold">
-                    Sin licencia activa
-                  </span>
-                </>
+                <div className="flex items-center space-x-1.5 px-2 py-1 rounded-md"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(220, 38, 38, 0.1) 100%)',
+                    border: '1px solid rgba(239, 68, 68, 0.3)'
+                  }}
+                >
+                  <XCircle className="w-3 h-3 text-red-400 flex-shrink-0" />
+                  <span className="text-[10px] md:text-xs font-semibold text-red-400 whitespace-nowrap">Sin licencia</span>
+                </div>
               )}
             </div>
 
-            {/* Branding - Estilo Tiki */}
-            <div className="flex items-center space-x-3">
-              <span className="text-lg font-bold text-yellow-400" style={{ fontFamily: 'monospace' }}>&lt;/&gt;</span>
-              <div className="flex items-center space-x-2">
-                <span className="text-xs font-semibold text-yellow-400">ElectroShop</span>
-                <span className="text-xs text-gray-400">/</span>
-                <span className="text-xs font-semibold text-orange-400">TecnoAcceso</span>
+            {/* Branding Premium - Empresas Desarrolladoras */}
+            <div className="flex items-center space-x-2 md:space-x-3 flex-shrink-0">
+              <div className="flex items-center space-x-1.5 px-2 py-1 rounded-md"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.1) 0%, rgba(245, 158, 11, 0.05) 100%)',
+                  border: '1px solid rgba(251, 191, 36, 0.2)'
+                }}
+              >
+                <span className="text-sm md:text-base font-bold text-yellow-400" style={{ fontFamily: 'monospace' }}>&lt;/&gt;</span>
+                <div className="flex items-center space-x-1 md:space-x-1.5">
+                  <span className="text-[10px] md:text-xs font-bold text-yellow-400 whitespace-nowrap">ElectroShop</span>
+                  <span className="text-[10px] md:text-xs text-gray-500">/</span>
+                  <span className="text-[10px] md:text-xs font-bold text-orange-400 whitespace-nowrap">TecnoAcceso</span>
+                </div>
+              </div>
+              <div className="hidden md:flex items-center space-x-1.5 text-[10px] text-gray-500">
+                <span>© 2025</span>
+                <span className="text-luxury-gold font-semibold">Piker</span>
               </div>
             </div>
           </div>
@@ -446,6 +652,9 @@ export default function Layout({ children }) {
           className="lg:hidden fixed inset-0 bg-black/50 z-40"
         />
       )}
+
+      {/* Profile Modal */}
+      <UserProfileModal isOpen={profileModalOpen} onClose={() => setProfileModalOpen(false)} />
     </div>
   )
 }

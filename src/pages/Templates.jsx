@@ -150,10 +150,10 @@ export default function Templates() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-display font-bold text-luxury-white mb-1">
+            <h1 className="text-2xl font-display font-bold text-luxury-white mb-0.5 tracking-tight">
               Plantillas
             </h1>
-            <p className="text-sm text-gray-400">
+            <p className="text-xs text-gray-400">
               Gestiona tus plantillas de mensajes
             </p>
           </div>
@@ -317,7 +317,7 @@ export default function Templates() {
                 className="bg-luxury-darkGray rounded-xl border border-luxury-gray max-w-lg w-full p-5"
               >
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-display font-bold text-luxury-white">
+                  <h2 className="text-2xl font-heading font-bold text-luxury-white">
                     {editingTemplate ? 'Editar Plantilla' : 'Nueva Plantilla'}
                   </h2>
                   <button

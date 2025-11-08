@@ -21,16 +21,16 @@ export default function Licenses() {
     user_id: '',
     plan_type: 'basic',
     message_limit: 1000,
-    valid_until: '',
-    is_active: true,
-    meta_api_token: '',
-    meta_phone_number_id: ''
+    valid_until: ''
   })
 
   useEffect(() => {
     fetchLicenses()
-    fetchUsers()
   }, [])
+
+  useEffect(() => {
+    fetchUsers()
+  }, [editingLicense]) // Re-fetch usuarios cuando cambia editingLicense
 
   const fetchLicenses = async () => {
     try {
@@ -75,22 +75,36 @@ export default function Licenses() {
 
       if (usersError) throw usersError
 
-      // Obtener usuarios con licencias activas
-      const { data: activeLicenses, error: licensesError } = await supabase
-        .from('licenses')
-        .select('user_id')
-        .eq('is_active', true)
-        .gte('valid_until', new Date().toISOString())
+      // Si estamos editando una licencia, mostrar todos los usuarios
+      // Si estamos creando una nueva, filtrar usuarios que ya tienen licencia activa
+      if (!editingLicense) {
+        // Obtener usuarios con licencias activas y válidas
+        const { data: activeLicenses, error: licensesError } = await supabase
+          .from('licenses')
+          .select('user_id')
+          .eq('is_active', true)
+          .gte('valid_until', new Date().toISOString())
 
-      if (licensesError) throw licensesError
+        if (licensesError) {
+          console.error('Error obteniendo licencias activas:', licensesError)
+          // En caso de error, mostrar todos los usuarios
+          setUsers(allUsers || [])
+          return
+        }
 
-      // Filtrar usuarios que NO tienen licencia activa
-      const usersWithLicenseIds = new Set(activeLicenses?.map(l => l.user_id) || [])
-      const usersWithoutLicense = allUsers?.filter(user => !usersWithLicenseIds.has(user.id)) || []
+        // Filtrar usuarios que NO tienen licencia activa
+        const usersWithLicenseIds = new Set(activeLicenses?.map(l => l.user_id) || [])
+        const usersWithoutLicense = allUsers?.filter(user => !usersWithLicenseIds.has(user.id)) || []
 
-      setUsers(usersWithoutLicense)
+        console.log('👥 Usuarios sin licencia activa:', usersWithoutLicense.length, 'de', allUsers?.length)
+        setUsers(usersWithoutLicense)
+      } else {
+        // Al editar, mostrar todos los usuarios
+        setUsers(allUsers || [])
+      }
     } catch (error) {
       console.error('Error fetching users:', error)
+      setUsers([])
     }
   }
 
@@ -112,45 +126,74 @@ export default function Licenses() {
 
   const handleSave = async () => {
     try {
+      // Validar campos requeridos
+      if (!formData.license_key) {
+        alert('Por favor ingresa una clave de licencia')
+        return
+      }
+      if (!formData.user_id) {
+        alert('Por favor selecciona un usuario')
+        return
+      }
+      if (!formData.valid_until) {
+        alert('Por favor selecciona una fecha de validez')
+        return
+      }
+
       if (editingLicense) {
         // Update existing license
         const { error } = await supabase
           .from('licenses')
           .update({
-            user_id: formData.user_id || null,
+            user_id: formData.user_id,
             plan_type: formData.plan_type,
             message_limit: formData.message_limit,
-            valid_until: formData.valid_until || null,
-            is_active: formData.is_active,
-            meta_api_token: formData.meta_api_token || null,
-            meta_phone_number_id: formData.meta_phone_number_id || null
+            valid_until: formData.valid_until,
+            is_active: true // Siempre activa al crear/editar
           })
           .eq('id', editingLicense.id)
 
-        if (error) throw error
+        if (error) {
+          console.error('Error updating license:', error)
+          if (error.code === '23503') {
+            alert('Error: El usuario seleccionado no existe. Por favor ejecuta el script SQL para corregir la base de datos.')
+          } else {
+            throw error
+          }
+          return
+        }
       } else {
         // Create new license
         const { error } = await supabase
           .from('licenses')
           .insert([{
             license_key: formData.license_key,
-            user_id: formData.user_id || null,
+            user_id: formData.user_id,
             plan_type: formData.plan_type,
             message_limit: formData.message_limit,
-            valid_until: formData.valid_until || null,
-            is_active: formData.is_active,
-            meta_api_token: formData.meta_api_token || null,
-            meta_phone_number_id: formData.meta_phone_number_id || null
+            valid_until: formData.valid_until,
+            is_active: true // Siempre activa al crear
           }])
 
-        if (error) throw error
+        if (error) {
+          console.error('Error creating license:', error)
+          if (error.code === '23503') {
+            alert('Error: El usuario seleccionado no existe. Por favor ejecuta el script SQL para corregir la base de datos.')
+          } else if (error.code === '23505') {
+            alert('Error: La clave de licencia ya existe')
+          } else {
+            throw error
+          }
+          return
+        }
       }
 
       fetchLicenses()
+      await fetchUsers() // Refrescar usuarios después de guardar
       handleCloseModal()
     } catch (error) {
       console.error('Error saving license:', error)
-      alert('Error al guardar la licencia')
+      alert('Error al guardar la licencia: ' + (error.message || 'Error desconocido'))
     }
   }
 
@@ -165,6 +208,7 @@ export default function Licenses() {
 
       if (error) throw error
       fetchLicenses()
+      await fetchUsers() // Refrescar usuarios después de eliminar
     } catch (error) {
       console.error('Error deleting license:', error)
       alert('Error al eliminar la licencia')
@@ -178,15 +222,12 @@ export default function Licenses() {
       user_id: license.user_id || '',
       plan_type: license.plan_type,
       message_limit: license.message_limit,
-      valid_until: license.valid_until ? license.valid_until.split('T')[0] : '',
-      is_active: license.is_active,
-      meta_api_token: license.meta_api_token || '',
-      meta_phone_number_id: license.meta_phone_number_id || ''
+      valid_until: license.valid_until ? license.valid_until.split('T')[0] : ''
     })
     setShowModal(true)
   }
 
-  const handleCloseModal = () => {
+  const handleCloseModal = async () => {
     setShowModal(false)
     setEditingLicense(null)
     setFormData({
@@ -194,18 +235,35 @@ export default function Licenses() {
       user_id: '',
       plan_type: 'basic',
       message_limit: 1000,
-      valid_until: '',
-      is_active: true,
-      meta_api_token: '',
-      meta_phone_number_id: ''
+      valid_until: ''
     })
+    // Refrescar usuarios cuando se cierra el modal
+    await fetchUsers()
   }
 
-  const handleNewLicense = () => {
+  // Función para agregar meses a la fecha actual
+  const addMonthsToDate = (months) => {
+    const date = new Date()
+    date.setMonth(date.getMonth() + months)
+    return date.toISOString().split('T')[0]
+  }
+
+  const setQuickDate = (months) => {
+    const date = addMonthsToDate(months)
+    setFormData({ ...formData, valid_until: date })
+  }
+
+  const handleNewLicense = async () => {
+    setEditingLicense(null) // Asegurar que no estamos editando
     setFormData({
-      ...formData,
-      license_key: generateLicenseKey()
+      license_key: generateLicenseKey(),
+      user_id: '',
+      plan_type: 'basic',
+      message_limit: 1000,
+      valid_until: ''
     })
+    // Refrescar usuarios para mostrar solo los que no tienen licencia
+    await fetchUsers()
     setShowModal(true)
   }
 
@@ -224,11 +282,11 @@ export default function Licenses() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-display font-bold text-luxury-white mb-2 flex items-center space-x-3">
-              <Shield className="w-8 h-8 text-luxury-gold" />
+            <h1 className="text-2xl font-display font-bold text-luxury-white mb-0.5 flex items-center space-x-3 tracking-tight">
+              <Shield className="w-6 h-6 text-luxury-gold" />
               <span>Gestión de Licencias</span>
             </h1>
-            <p className="text-gray-400">
+            <p className="text-xs text-gray-400 ml-11">
               Administra las licencias del sistema y API tokens
             </p>
           </div>
@@ -389,7 +447,7 @@ export default function Licenses() {
                 className="bg-luxury-darkGray rounded-xl border border-luxury-gray max-w-2xl w-full p-6 my-8"
               >
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-display font-bold text-luxury-white">
+                  <h2 className="text-2xl font-heading font-bold text-luxury-white">
                     {editingLicense ? 'Editar Licencia' : 'Nueva Licencia'}
                   </h2>
                   <button
@@ -418,14 +476,15 @@ export default function Licenses() {
                   {/* User */}
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Asignar a Usuario (Opcional)
+                      Asignar a Usuario <span className="text-red-400">*</span>
                     </label>
                     <select
                       value={formData.user_id}
                       onChange={(e) => setFormData({ ...formData, user_id: e.target.value })}
                       className="input-luxury"
+                      required
                     >
-                      <option value="">Sin asignar</option>
+                      <option value="">Selecciona un usuario</option>
                       {users.map(user => (
                         <option key={user.id} value={user.id}>
                           {user.full_name} - {user.email}
@@ -475,56 +534,42 @@ export default function Licenses() {
                   {/* Valid Until */}
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Válida Hasta (Opcional)
+                      Válida Hasta <span className="text-red-400">*</span>
                     </label>
-                    <input
-                      type="date"
-                      value={formData.valid_until}
-                      onChange={(e) => setFormData({ ...formData, valid_until: e.target.value })}
-                      className="input-luxury"
-                    />
-                  </div>
-
-                  {/* Meta API Token */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Meta API Token (Opcional)
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.meta_api_token}
-                      onChange={(e) => setFormData({ ...formData, meta_api_token: e.target.value })}
-                      className="input-luxury"
-                      placeholder="EAAxxxxxxx..."
-                    />
-                  </div>
-
-                  {/* Meta Phone Number ID */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Meta Phone Number ID (Opcional)
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.meta_phone_number_id}
-                      onChange={(e) => setFormData({ ...formData, meta_phone_number_id: e.target.value })}
-                      className="input-luxury"
-                      placeholder="123456789..."
-                    />
-                  </div>
-
-                  {/* Is Active */}
-                  <div className="flex items-center space-x-3">
-                    <input
-                      type="checkbox"
-                      id="is_active"
-                      checked={formData.is_active}
-                      onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                      className="w-5 h-5 rounded border-luxury-lightGray bg-luxury-gray checked:bg-luxury-gold"
-                    />
-                    <label htmlFor="is_active" className="text-sm font-medium text-gray-300">
-                      Licencia Activa
-                    </label>
+                    <div className="space-y-2">
+                      {/* Botones rápidos */}
+                      <div className="flex items-center space-x-2">
+                        <button
+                          type="button"
+                          onClick={() => setQuickDate(1)}
+                          className="px-3 py-1.5 text-xs font-medium bg-luxury-gold/10 text-luxury-gold border border-luxury-gold/30 rounded-lg hover:bg-luxury-gold/20 transition-colors"
+                        >
+                          1 Mes
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setQuickDate(3)}
+                          className="px-3 py-1.5 text-xs font-medium bg-luxury-gold/10 text-luxury-gold border border-luxury-gold/30 rounded-lg hover:bg-luxury-gold/20 transition-colors"
+                        >
+                          3 Meses
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setQuickDate(12)}
+                          className="px-3 py-1.5 text-xs font-medium bg-luxury-gold/10 text-luxury-gold border border-luxury-gold/30 rounded-lg hover:bg-luxury-gold/20 transition-colors"
+                        >
+                          1 Año
+                        </button>
+                      </div>
+                      <input
+                        type="date"
+                        value={formData.valid_until}
+                        onChange={(e) => setFormData({ ...formData, valid_until: e.target.value })}
+                        className="input-luxury"
+                        required
+                        min={new Date().toISOString().split('T')[0]}
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -534,8 +579,8 @@ export default function Licenses() {
                   </button>
                   <button
                     onClick={handleSave}
-                    disabled={!formData.license_key}
-                    className="btn-primary flex items-center space-x-2"
+                    disabled={!formData.license_key || !formData.user_id || !formData.valid_until}
+                    className="btn-primary flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Save className="w-5 h-5" />
                     <span>{editingLicense ? 'Actualizar' : 'Crear'}</span>

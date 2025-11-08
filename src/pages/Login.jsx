@@ -1,26 +1,54 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { User, Lock, Loader2, Shield } from 'lucide-react'
+import { User, Lock, Loader2, Shield, Mail } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import CustomAlert from '../components/CustomAlert'
+import { supabase } from '../lib/supabase'
 
 export default function Login() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [showLicenseAlert, setShowLicenseAlert] = useState(false)
+  const [adminContact, setAdminContact] = useState(null)
   const { signIn } = useAuth()
   const navigate = useNavigate()
+
+  const fetchAdminContact = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('email, full_name')
+        .eq('role', 'system_admin')
+        .limit(1)
+        .single()
+
+      if (!error && data) {
+        setAdminContact(data)
+      }
+    } catch (err) {
+      console.error('Error fetching admin contact:', err)
+    }
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
     setLoading(true)
+    setShowLicenseAlert(false)
 
     try {
       const { data, error } = await signIn(username, password)
 
       if (error) {
+        // Verificar si es error de licencia
+        if (error.code === 'LICENSE_REQUIRED' || error.message === 'LICENSE_REQUIRED') {
+          await fetchAdminContact()
+          setShowLicenseAlert(true)
+          return
+        }
         setError(error.message)
         return
       }
@@ -29,7 +57,12 @@ export default function Login() {
         navigate('/dashboard')
       }
     } catch (err) {
-      setError('Error al iniciar sesión. Por favor, intente nuevamente.')
+      if (err.code === 'LICENSE_REQUIRED' || err.message === 'LICENSE_REQUIRED') {
+        await fetchAdminContact()
+        setShowLicenseAlert(true)
+      } else {
+        setError('Error al iniciar sesión. Por favor, intente nuevamente.')
+      }
     } finally {
       setLoading(false)
     }
@@ -93,8 +126,8 @@ export default function Login() {
             </div>
           </div>
 
-          <h1 className="text-4xl font-display font-bold gradient-text mb-2 tracking-tight">
-            
+          <h1 className="text-5xl font-display font-bold gradient-text mb-2 tracking-tight">
+            Piker
           </h1>
 
           <p className="text-gray-400 text-sm font-light">
@@ -190,6 +223,47 @@ export default function Login() {
           </p>
         </div>
       </motion.div>
+
+      {/* License Alert */}
+      <CustomAlert
+        isOpen={showLicenseAlert}
+        onClose={() => setShowLicenseAlert(false)}
+        title="Licencia Requerida"
+        message={
+          <div className="space-y-3">
+            <p className="text-sm text-gray-300">
+              Tu cuenta no tiene una licencia activa. Para acceder al sistema, necesitas una licencia válida asignada por el administrador.
+            </p>
+            {adminContact && (
+              <div className="mt-4 pt-4 border-t border-gray-700">
+                <p className="text-xs font-semibold text-gray-400 mb-2">Contacta al administrador:</p>
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2 text-sm text-gray-300">
+                    <Mail className="w-4 h-4 text-luxury-gold" />
+                    <a 
+                      href={`mailto:${adminContact.email}`}
+                      className="text-luxury-gold hover:text-luxury-brightBlue transition-colors"
+                    >
+                      {adminContact.email}
+                    </a>
+                  </div>
+                  {adminContact.full_name && (
+                    <p className="text-xs text-gray-400 ml-6">
+                      {adminContact.full_name}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+            {!adminContact && (
+              <p className="text-xs text-gray-500 mt-2">
+                Por favor, contacta al administrador del sistema para obtener una licencia.
+              </p>
+            )}
+          </div>
+        }
+        type="error"
+      />
     </div>
   )
 }

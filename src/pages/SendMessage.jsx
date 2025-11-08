@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useState, useEffect, useRef } from 'react'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Plus,
@@ -10,7 +10,9 @@ import {
   QrCode,
   X,
   Loader2,
-  Phone
+  Phone,
+  ChevronDown,
+  FileText
 } from 'lucide-react'
 import Layout from '../components/Layout'
 import { useAuth } from '../contexts/AuthContext'
@@ -39,6 +41,7 @@ const messageTypeInfo = {
 export default function SendMessage() {
   const { type } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const { profile } = useAuth()
   const [phoneNumbers, setPhoneNumbers] = useState([])
   const [currentPhone, setCurrentPhone] = useState('')
@@ -48,6 +51,22 @@ export default function SendMessage() {
   const [sending, setSending] = useState(false)
   const [showQRScanner, setShowQRScanner] = useState(false)
   const [alert, setAlert] = useState({ isOpen: false, title: '', message: '', type: 'info' })
+  const [showTemplateDropdown, setShowTemplateDropdown] = useState(false)
+  const [pendingNavigation, setPendingNavigation] = useState(null)
+  const [showDataLossAlert, setShowDataLossAlert] = useState(false)
+  const previousTypeRef = useRef(type)
+  const targetTypeRef = useRef(null)
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showTemplateDropdown && !event.target.closest('.template-dropdown')) {
+        setShowTemplateDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showTemplateDropdown])
 
   const showAlert = (title, message, type = 'info') => {
     setAlert({ isOpen: true, title, message, type })
@@ -57,17 +76,110 @@ export default function SendMessage() {
     setAlert({ isOpen: false, title: '', message: '', type: 'info' })
   }
 
-  // Validate type
+  // Function to handle navigation with data loss protection
+  const handleNavigation = (newPath) => {
+    // Validar si realmente hay datos pendientes antes de mostrar el alert
+    const hasPhoneNumbers = phoneNumbers.length > 0
+    const hasCustomMessage = customMessage.trim() !== '' && customMessage.trim() !== (selectedTemplate?.template_content || '').trim()
+    const hasData = hasPhoneNumbers || hasCustomMessage
+    
+    if (hasData) {
+      setPendingNavigation(newPath)
+      setShowDataLossAlert(true)
+    } else {
+      navigate(newPath)
+    }
+  }
+
+  // Function to confirm data loss and proceed with navigation
+  const confirmDataLoss = () => {
+    const targetPath = pendingNavigation || (targetTypeRef.current ? `/send/${targetTypeRef.current}` : `/send/${type}`)
+    setPhoneNumbers([])
+    setCurrentPhone('')
+    setCustomMessage('')
+    setSelectedTemplate(null)
+    setShowDataLossAlert(false)
+    setPendingNavigation(null)
+    
+    // Navigate to the intended path
+    if (targetPath.startsWith('/send/')) {
+      const targetType = targetPath.split('/send/')[1]
+      targetTypeRef.current = null
+      previousTypeRef.current = targetType
+      navigate(targetPath)
+    }
+  }
+
+  // Function to cancel navigation
+  const cancelNavigation = () => {
+    setShowDataLossAlert(false)
+    setPendingNavigation(null)
+    targetTypeRef.current = null
+  }
+
+  // Validate type and handle data loss protection
   useEffect(() => {
     if (!['received', 'reminder', 'return'].includes(type)) {
       navigate('/dashboard')
+      return
     }
-  }, [type, navigate])
 
-  // Fetch templates
+    // Check if type changed and we have data
+    if (previousTypeRef.current && previousTypeRef.current !== type) {
+      // Validar si realmente hay datos pendientes antes de mostrar el alert
+      const hasPhoneNumbers = phoneNumbers.length > 0
+      const hasCustomMessage = customMessage.trim() !== '' && customMessage.trim() !== (selectedTemplate?.template_content || '').trim()
+      const hasData = hasPhoneNumbers || hasCustomMessage
+      
+      if (hasData && !showDataLossAlert && !pendingNavigation) {
+        // Type changed with data - save target type, revert and show warning
+        targetTypeRef.current = type
+        setPendingNavigation(`/send/${type}`)
+        setShowDataLossAlert(true)
+        // Revert navigation to previous type
+        navigate(`/send/${previousTypeRef.current}`, { replace: true })
+        return
+      }
+    }
+
+    // Update previous type only if we're not blocking navigation
+    if (!showDataLossAlert && !pendingNavigation) {
+      previousTypeRef.current = type
+    }
+  }, [type, navigate, phoneNumbers.length, customMessage, selectedTemplate, showDataLossAlert, pendingNavigation])
+
+  // Intercept navigation when there's data
   useEffect(() => {
-    fetchTemplates()
-  }, [type])
+    const handleBeforeUnload = (e) => {
+      // Validar si realmente hay datos pendientes antes de mostrar el alert
+      const hasPhoneNumbers = phoneNumbers.length > 0
+      const hasCustomMessage = customMessage.trim() !== '' && customMessage.trim() !== (selectedTemplate?.template_content || '').trim()
+      const hasData = hasPhoneNumbers || hasCustomMessage
+      
+      if (hasData) {
+        e.preventDefault()
+        e.returnValue = ''
+      }
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [phoneNumbers.length, customMessage, selectedTemplate])
+
+  // Fetch templates and reset data when type changes (only if confirmed)
+  useEffect(() => {
+    // Only reset if we're not showing the data loss alert and no pending navigation
+    if (!showDataLossAlert && !pendingNavigation) {
+      fetchTemplates()
+      // Only reset if type actually changed
+      if (previousTypeRef.current !== type) {
+        setPhoneNumbers([])
+        setCurrentPhone('')
+        setCustomMessage('')
+        setSelectedTemplate(null)
+      }
+    }
+  }, [type, showDataLossAlert, pendingNavigation])
 
   const fetchTemplates = async () => {
     try {
@@ -152,15 +264,84 @@ export default function SendMessage() {
   }
 
   const validatePhoneNumber = (phone) => {
-    // Remove all non-numeric characters
+    if (!phone) {
+      return { valid: false, error: 'El número de teléfono no puede estar vacío' }
+    }
+
+    // Remove all non-numeric characters for validation
     const cleaned = phone.replace(/\D/g, '')
 
-    // Check if it's a valid length (typically 10-15 digits for international numbers)
-    if (cleaned.length < 10 || cleaned.length > 15) {
-      return { valid: false, error: 'Número de teléfono inválido' }
+    // Check if it's empty after cleaning
+    if (!cleaned || cleaned.length === 0) {
+      return { valid: false, error: 'El número de teléfono debe contener al menos un dígito' }
+    }
+
+    // Check if it's a valid length for WhatsApp (10-15 digits)
+    // WhatsApp requires: country code (1-3 digits) + phone number (usually 7-12 digits)
+    if (cleaned.length < 10) {
+      return { valid: false, error: 'El número es muy corto. Debe tener al menos 10 dígitos' }
+    }
+    
+    if (cleaned.length > 15) {
+      return { valid: false, error: 'El número es muy largo. WhatsApp acepta máximo 15 dígitos' }
+    }
+
+    // Validate WhatsApp format: should start with country code
+    // For Venezuelan numbers: should start with 58 (country code)
+    // For other countries: should have valid country code
+    if (phone.startsWith('+')) {
+      // International format with +
+      const withoutPlus = phone.substring(1).replace(/\D/g, '')
+      if (withoutPlus.length < 10 || withoutPlus.length > 15) {
+        return { valid: false, error: 'Formato internacional inválido. Ejemplo: +584245939950' }
+      }
+    } else if (cleaned.startsWith('58')) {
+      // Venezuelan number without + (will be added by convertToWhatsAppFormat)
+      if (cleaned.length < 12 || cleaned.length > 13) {
+        return { valid: false, error: 'Número venezolano inválido. Debe tener 10 dígitos después del código de país (58)' }
+      }
+    } else if (cleaned.startsWith('0')) {
+      // Venezuelan number starting with 0 (will be converted)
+      if (cleaned.length !== 11) {
+        return { valid: false, error: 'Número venezolano inválido. Debe tener 11 dígitos (0 + 10 dígitos)' }
+      }
+    } else if (cleaned.length === 10) {
+      // Assume Venezuelan number without country code (will be converted)
+      // This is valid
+    } else {
+      // Other formats - check if it's a valid international number
+      if (cleaned.length < 10 || cleaned.length > 15) {
+        return { valid: false, error: 'Formato de número inválido. Usa formato internacional (+58XXXXXXXXXX) o número venezolano (0424XXXXXXX)' }
+      }
     }
 
     return { valid: true, cleaned }
+  }
+
+  const validateWhatsAppFormat = (phone) => {
+    if (!phone) {
+      return { valid: false, error: 'El número no puede estar vacío' }
+    }
+
+    // Must start with + for WhatsApp
+    if (!phone.startsWith('+')) {
+      return { valid: false, error: 'El número debe estar en formato internacional con + (ejemplo: +584245939950)' }
+    }
+
+    // Remove + and validate digits
+    const digits = phone.substring(1).replace(/\D/g, '')
+    
+    if (digits.length < 10 || digits.length > 15) {
+      return { valid: false, error: 'El número debe tener entre 10 y 15 dígitos después del +' }
+    }
+
+    // Validate country code (first 1-3 digits)
+    const countryCode = digits.substring(0, 3)
+    if (!/^[1-9]\d{0,2}$/.test(countryCode)) {
+      return { valid: false, error: 'Código de país inválido' }
+    }
+
+    return { valid: true, formatted: phone }
   }
 
   const checkDuplicate = async (phoneNumber) => {
@@ -325,19 +506,34 @@ export default function SendMessage() {
   }
 
   const handleAddPhone = async () => {
-    if (!currentPhone.trim()) return
-
-    // Convert to WhatsApp format first
-    const whatsappNumber = convertToWhatsAppFormat(currentPhone)
-    
-    if (!whatsappNumber) {
-      showAlert('Número inválido', 'Por favor ingresa un número de teléfono válido', 'error')
+    if (!currentPhone.trim()) {
+      showAlert('Campo vacío', 'Por favor ingresa un número de teléfono', 'warning')
       return
     }
 
-    const validation = validatePhoneNumber(whatsappNumber)
-    if (!validation.valid) {
-      showAlert('Número inválido', validation.error, 'error')
+    // First, validate the input format
+    const initialValidation = validatePhoneNumber(currentPhone)
+    if (!initialValidation.valid) {
+      showAlert('Número inválido', initialValidation.error, 'error')
+      return
+    }
+
+    // Convert to WhatsApp format
+    const whatsappNumber = convertToWhatsAppFormat(currentPhone)
+    
+    if (!whatsappNumber) {
+      showAlert(
+        'Número inválido', 
+        'No se pudo convertir el número a formato WhatsApp. Verifica que sea un número válido (ejemplo: 04245939950 o +584245939950)', 
+        'error'
+      )
+      return
+    }
+
+    // Validate WhatsApp format specifically
+    const whatsappValidation = validateWhatsAppFormat(whatsappNumber)
+    if (!whatsappValidation.valid) {
+      showAlert('Formato WhatsApp inválido', whatsappValidation.error, 'error')
       return
     }
 
@@ -360,6 +556,7 @@ export default function SendMessage() {
       status: 'pending'
     }])
     setCurrentPhone('')
+    showAlert('Número agregado', `Número ${whatsappNumber} agregado correctamente`, 'success')
   }
 
   const handleRemovePhone = (id) => {
@@ -543,13 +740,45 @@ export default function SendMessage() {
 
       setPhoneNumbers(updatedPhones)
 
-      // Show success message
+      // Calculate success and failed counts
       const successCount = results.filter(r => r.success).length
+      const failedCount = results.filter(r => !r.success).length
+
+      // Save complete batch report to message_batches table
+      try {
+        const phoneNumbersList = phoneNumbers.map(p => p.number)
+        
+        const { error: batchError } = await supabase
+          .from('message_batches')
+          .insert([{
+            user_id: profile.id,
+            message_type: type,
+            template_id: selectedTemplate?.id || null,
+            template_name: selectedTemplate?.template_name || null,
+            message_content: customMessage,
+            phone_numbers: phoneNumbersList,
+            total_sent: successCount,
+            total_failed: failedCount,
+            sent_at: new Date().toISOString()
+          }])
+
+        if (batchError) {
+          console.error('Error saving batch report:', batchError)
+          // Don't fail the whole operation if batch report fails
+        }
+      } catch (batchError) {
+        console.error('Error saving batch report:', batchError)
+        // Don't fail the whole operation if batch report fails
+      }
+
+      // Show success message
       showAlert('Mensajes enviados', `${successCount} de ${phoneNumbers.length} mensajes enviados exitosamente`, 'success')
 
       // Clear list after a delay
       setTimeout(() => {
         setPhoneNumbers([])
+        setCustomMessage('')
+        setSelectedTemplate(null)
       }, 2000)
 
     } catch (error) {
@@ -567,25 +796,76 @@ export default function SendMessage() {
     <Layout>
       <div className="space-y-4">
         {/* Header */}
-        <div>
-          <h1 className="text-xl font-display font-bold text-luxury-white mb-1">
-            {typeInfo.label}
-          </h1>
-          <p className="text-sm text-gray-400">
-            {typeInfo.description}
-          </p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl font-display font-bold text-luxury-white mb-0.5 tracking-tight">
+              {typeInfo.label}
+            </h1>
+            <p className="text-xs text-gray-400">
+              {typeInfo.description}
+            </p>
+          </div>
+          
+          {/* Template Badge Selector - Compact */}
+          {templates.length > 0 && (
+            <div className="relative template-dropdown">
+              <button
+                onClick={() => setShowTemplateDropdown(!showTemplateDropdown)}
+                className="flex items-center space-x-1.5 px-2.5 py-1.5 bg-luxury-gray border border-luxury-lightGray rounded-lg text-luxury-white hover:border-luxury-gold/50 transition-all duration-200 group"
+                title="Seleccionar plantilla"
+              >
+                <FileText className="w-4 h-4 text-luxury-brightBlue group-hover:text-luxury-cyan transition-colors flex-shrink-0" />
+                <span className="text-sm font-medium text-luxury-white whitespace-nowrap">
+                  {selectedTemplate?.template_name || 'Seleccionar'}
+                </span>
+                <ChevronDown 
+                  className={`w-3 h-3 text-gray-400 transition-transform duration-200 flex-shrink-0 ${showTemplateDropdown ? 'rotate-180' : ''}`}
+                />
+              </button>
+
+              {/* Dropdown Menu */}
+              <AnimatePresence>
+                {showTemplateDropdown && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="absolute right-0 z-10 w-64 mt-2 bg-luxury-darkGray border border-luxury-lightGray rounded-lg shadow-xl overflow-hidden template-dropdown"
+                  >
+                    {templates.map((template) => (
+                      <button
+                        key={template.id}
+                        onClick={() => {
+                          setSelectedTemplate(template)
+                          setCustomMessage(template.template_content || '')
+                          setShowTemplateDropdown(false)
+                        }}
+                        className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
+                          selectedTemplate?.id === template.id
+                            ? 'bg-luxury-gold/20 text-luxury-gold border-l border-r border-luxury-gold/30'
+                            : 'text-gray-300 hover:bg-luxury-gray hover:text-luxury-white'
+                        }`}
+                      >
+                        {template.template_name}
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Left Column - Input & List */}
-          <div className="lg:col-span-2 space-y-4">
+          {/* Left Column - Input & List & Message */}
+          <div className="lg:col-span-3 space-y-4">
             {/* Add Phone Card */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               className="card-luxury p-4"
             >
-              <h2 className="text-base font-display font-semibold text-luxury-white mb-3">
+              <h2 className="text-xl font-heading font-semibold text-luxury-white mb-3">
                 Agregar Números
               </h2>
 
@@ -599,7 +879,7 @@ export default function SendMessage() {
                       onChange={(e) => setCurrentPhone(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && handleAddPhone()}
                       className="w-full pl-10 pr-3 py-2 bg-luxury-gray border border-luxury-lightGray rounded-lg text-luxury-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-luxury-gold/50 text-sm"
-                      placeholder="+1234567890"
+                      placeholder="04245939950"
                     />
                   </div>
                   <button
@@ -629,7 +909,7 @@ export default function SendMessage() {
               className="card-luxury p-4"
             >
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-base font-display font-semibold text-luxury-white">
+                <h2 className="text-xl font-heading font-semibold text-luxury-white">
                   Lista de Envío ({phoneNumbers.length})
                 </h2>
                 {phoneNumbers.length > 0 && (
@@ -705,69 +985,6 @@ export default function SendMessage() {
               )}
             </motion.div>
           </div>
-
-          {/* Right Column - Message Template */}
-          <div className="space-y-4">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="card-luxury p-4"
-            >
-              <h2 className="text-base font-display font-semibold text-luxury-white mb-3">
-                Mensaje
-              </h2>
-
-              {templates.length > 0 ? (
-                <>
-                  <div className="mb-3">
-                    <label className="block text-xs font-medium text-gray-300 mb-1.5">
-                      Plantilla
-                    </label>
-                    <select
-                      value={selectedTemplate?.id || ''}
-                      onChange={(e) => {
-                        const template = templates.find(t => t.id === e.target.value)
-                        setSelectedTemplate(template)
-                        setCustomMessage(template?.template_content || '')
-                      }}
-                      className="w-full px-3 py-2 bg-luxury-gray border border-luxury-lightGray rounded-lg text-luxury-white focus:outline-none focus:ring-2 focus:ring-luxury-gold/50 text-sm"
-                    >
-                      {templates.map(template => (
-                        <option key={template.id} value={template.id}>
-                          {template.template_name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-gray-300 mb-1.5">
-                      Contenido
-                    </label>
-                    <textarea
-                      value={customMessage}
-                      onChange={(e) => setCustomMessage(e.target.value)}
-                      className="w-full px-3 py-2 bg-luxury-gray border border-luxury-lightGray rounded-lg text-luxury-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-luxury-gold/50 text-sm min-h-32"
-                      rows={6}
-                    />
-                  </div>
-                </>
-              ) : (
-                <div className="text-center py-6">
-                  <p className="text-gray-400 mb-3 text-sm">
-                    No tienes plantillas para este tipo
-                  </p>
-                  <button
-                    onClick={() => navigate('/templates')}
-                    className="btn-primary text-sm py-2"
-                  >
-                    Crear Plantilla
-                  </button>
-                </div>
-              )}
-            </motion.div>
-          </div>
         </div>
       </div>
 
@@ -778,6 +995,36 @@ export default function SendMessage() {
         title={alert.title}
         message={alert.message}
         type={alert.type}
+      />
+
+      {/* Data Loss Warning Alert */}
+      <CustomAlert
+        isOpen={showDataLossAlert}
+        onClose={cancelNavigation}
+        title="¿Perder información?"
+        message={
+          <div className="space-y-3">
+            <p className="text-sm text-gray-300">
+              Tienes datos sin guardar en esta sección:
+            </p>
+            <ul className="text-sm text-gray-400 list-disc list-inside space-y-1">
+              {phoneNumbers.length > 0 && (
+                <li>{phoneNumbers.length} número(s) en la lista</li>
+              )}
+              {customMessage.trim() && (
+                <li>Mensaje personalizado</li>
+              )}
+            </ul>
+            <p className="text-sm text-gray-300 mt-3">
+              Si cambias de sección, perderás esta información. ¿Deseas continuar?
+            </p>
+          </div>
+        }
+        type="warning"
+        showConfirm={true}
+        onConfirm={confirmDataLoss}
+        confirmText="Sí, continuar"
+        cancelText="Cancelar"
       />
 
       {/* QR Scanner Modal */}
@@ -798,7 +1045,7 @@ export default function SendMessage() {
                 className="bg-luxury-darkGray rounded-xl border border-luxury-gray max-w-lg w-full p-4"
               >
                 <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-lg font-display font-bold text-luxury-white">
+                  <h2 className="text-xl font-display font-bold text-luxury-white">
                     Escanear QR
                   </h2>
                   <button

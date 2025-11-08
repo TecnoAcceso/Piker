@@ -75,15 +75,6 @@ export default function Users() {
     setFilteredUsers(filtered)
   }
 
-  // Función simple para generar UUID
-  const generateUUID = () => {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-      const r = Math.random() * 16 | 0
-      const v = c === 'x' ? r : (r & 0x3 | 0x8)
-      return v.toString(16)
-    })
-  }
-
   const handleSave = async () => {
     try {
       if (editingUser) {
@@ -105,35 +96,64 @@ export default function Users() {
           return
         }
 
-        // Generar UUID manualmente (método simple y directo)
-        const newUserId = generateUUID()
+        // Validar formato de email antes de continuar
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        if (!emailRegex.test(formData.email)) {
+          showAlert('Email inválido', 'Por favor ingresa un email válido', 'error')
+          return
+        }
 
-        // Hash de la contraseña
+        // Validar longitud mínima de contraseña
+        if (formData.password.length < 6) {
+          showAlert('Contraseña muy corta', 'La contraseña debe tener al menos 6 caracteres', 'error')
+          return
+        }
+
+        // Hash de la contraseña de forma asíncrona
         const password_hash = await bcrypt.hash(formData.password, 10)
 
-        // Insertar con el ID generado manualmente
-        const { error } = await supabase
-          .from('profiles')
-          .insert({
-            id: newUserId,
-            username: formData.username,
-            email: formData.email,
-            password_hash: password_hash,
-            full_name: formData.full_name,
-            role: formData.role
-          })
+        // Usar la función SQL optimizada create_user_with_profile
+        const { data: userId, error } = await supabase.rpc('create_user_with_profile', {
+          p_username: formData.username.trim(),
+          p_email: formData.email.trim().toLowerCase(),
+          p_password_hash: password_hash,
+          p_full_name: formData.full_name.trim(),
+          p_role: formData.role || 'user'
+        })
 
         if (error) {
-          if (error.message.includes('username')) {
-            showAlert('Usuario duplicado', 'El nombre de usuario ya existe', 'error')
-          } else if (error.message.includes('email')) {
-            showAlert('Email duplicado', 'El email ya está registrado', 'error')
+          console.error('Error creating user:', error)
+          
+          // Manejo de errores específicos y user-friendly
+          const errorMessage = error.message || ''
+          
+          if (error.code === '23505' || errorMessage.includes('ya existe') || errorMessage.includes('ya está registrado')) {
+            if (errorMessage.includes('username') || errorMessage.includes('nombre de usuario')) {
+              showAlert('Usuario duplicado', 'El nombre de usuario ya está en uso', 'error')
+            } else if (errorMessage.includes('email')) {
+              showAlert('Email duplicado', 'Este email ya está registrado', 'error')
+            } else {
+              showAlert('Datos duplicados', 'El nombre de usuario o email ya existe', 'error')
+            }
+          } else if (error.code === '23503' || errorMessage.includes('foreign key')) {
+            showAlert(
+              'Error de configuración', 
+              'Por favor ejecuta el script SQL en Supabase para configurar correctamente la base de datos. Ver archivo supabase_function.sql', 
+              'error'
+            )
+          } else if (errorMessage.includes('requerido') || errorMessage.includes('requerida')) {
+            showAlert('Datos incompletos', errorMessage, 'error')
           } else {
-            throw error
+            showAlert('Error al crear usuario', errorMessage || 'Error desconocido. Por favor intenta nuevamente.', 'error')
           }
           return
         }
-        showAlert('Usuario creado', 'El usuario se creó exitosamente', 'success')
+        
+        if (userId) {
+          showAlert('Usuario creado', `Usuario "${formData.username}" creado exitosamente`, 'success')
+        } else {
+          showAlert('Advertencia', 'El usuario puede haberse creado pero no se recibió confirmación', 'warning')
+        }
       }
 
       fetchUsers()
@@ -225,10 +245,10 @@ export default function Users() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-semibold text-luxury-white mb-1">
+            <h1 className="text-2xl font-display font-bold text-luxury-white mb-0.5 tracking-tight">
               Gestión de Usuarios
             </h1>
-            <p className="text-sm text-gray-400">
+            <p className="text-xs text-gray-400">
               Administra los usuarios y sus permisos
             </p>
           </div>
@@ -387,7 +407,7 @@ export default function Users() {
                 className="bg-luxury-darkGray rounded-xl border border-luxury-gray max-w-md w-full p-6"
               >
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-semibold text-luxury-white">
+                  <h2 className="text-2xl font-heading font-semibold text-luxury-white">
                     {editingUser ? 'Editar Usuario' : 'Crear Usuario'}
                   </h2>
                   <button

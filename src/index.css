@@ -1,12 +1,18 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@400;500;600;700;800;900&family=Cormorant+Garamond:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@300;400;500;600;700;800;900&family=Raleway:wght@300;400;500;600;700;800;900&family=Josefin+Sans:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  * {
+    @apply antialiased;
+  }
+  
   body {
     @apply font-sans antialiased;
+    font-family: 'Inter', 'Poppins', system-ui, -apple-system, sans-serif;
+    font-weight: 400;
     @apply min-h-screen overflow-x-hidden;
     background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 25%, #0f1629 50%, #1e2847 75%, #0a0e27 100%);
     background-size: 400% 400%;
@@ -42,6 +48,40 @@
 
   html {
     @apply scroll-smooth;
+  }
+
+  /* Tipografía Premium */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display;
+    font-family: 'Josefin Sans', 'Raleway', 'Inter', sans-serif;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  h1 {
+    @apply text-3xl md:text-4xl lg:text-5xl;
+  }
+
+  h2 {
+    @apply text-2xl md:text-3xl;
+    font-family: 'Raleway', 'Inter', sans-serif;
+    font-weight: 600;
+  }
+
+  h3 {
+    @apply text-xl md:text-2xl;
+    font-family: 'Raleway', 'Inter', sans-serif;
+    font-weight: 600;
+  }
+
+  /* Aplicar fuente heading a subtítulos */
+  .font-heading {
+    font-family: 'Raleway', 'Inter', sans-serif;
+  }
+
+  /* Aplicar fuente display a títulos principales */
+  .font-display {
+    font-family: 'Recoleta', Georgia, serif;
   }
 
   /* Premium scrollbar */
