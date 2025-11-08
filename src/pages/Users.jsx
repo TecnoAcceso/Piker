@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Users as UsersIcon, Edit2, Trash2, Save, X, Search, Shield, Plus } from 'lucide-react'
+import { Users as UsersIcon, Edit2, Trash2, Save, X, Search, Shield } from 'lucide-react'
+import { MdGroupAdd } from "react-icons/md"
 import Layout from '../components/Layout'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
@@ -295,10 +296,7 @@ export default function Users() {
 
             {/* Contenido */}
             <div className="relative z-10 flex items-center gap-1.5">
-              <div className="relative">
-                <UsersIcon className="w-3.5 h-3.5 text-white" strokeWidth={2.5} />
-                <Plus className="w-2.5 h-2.5 text-white absolute -top-1 -right-1" strokeWidth={3} />
-              </div>
+              <MdGroupAdd className="w-4 h-4 text-white" />
               <span className="text-xs font-bold text-white tracking-wide uppercase" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
                 Crear Usuario
               </span>

@@ -14,6 +14,7 @@ import {
   ChevronDown,
   FileText
 } from 'lucide-react'
+import { MdAddToHomeScreen } from "react-icons/md"
 import Layout from '../components/Layout'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -999,7 +1000,7 @@ export default function SendMessage() {
 
                     {/* Contenido */}
                     <div className="relative z-10 flex items-center gap-1.5">
-                      <Plus className="w-3.5 h-3.5 text-white" strokeWidth={2.5} />
+                      <MdAddToHomeScreen className="w-4 h-4 text-white" />
                       <span className="text-xs font-bold text-white tracking-wide uppercase" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
                         Agregar
                       </span>

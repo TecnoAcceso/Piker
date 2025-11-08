@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, Edit2, Trash2, Save, X, FileText } from 'lucide-react'
+import { AiOutlineFileAdd } from "react-icons/ai"
 import Layout from '../components/Layout'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -190,10 +191,7 @@ export default function Templates() {
 
             {/* Contenido */}
             <div className="relative z-10 flex items-center gap-1.5">
-              <div className="relative">
-                <FileText className="w-3.5 h-3.5 text-white" strokeWidth={2.5} />
-                <Plus className="w-2.5 h-2.5 text-white absolute -top-1 -right-1" strokeWidth={3} />
-              </div>
+              <AiOutlineFileAdd className="w-4 h-4 text-white" />
               <span className="text-xs font-bold text-white tracking-wide uppercase" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
                 Nueva Plantilla
               </span>
