@@ -301,18 +301,18 @@ export default function Licenses() {
           </motion.button>
         </div>
 
-        {/* Licenses Table */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="card-luxury overflow-x-auto"
-        >
+        {/* Licenses Grid */}
+        <div className="space-y-4">
           {loading ? (
             <div className="text-center py-12 text-gray-400">
               Cargando licencias...
             </div>
           ) : licenses.length === 0 ? (
-            <div className="text-center py-12">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="card-luxury text-center py-12"
+            >
               <Key className="w-16 h-16 text-gray-600 mx-auto mb-4" />
               <h3 className="text-xl font-semibold text-gray-400 mb-2">
                 No hay licencias
@@ -323,109 +323,100 @@ export default function Licenses() {
               <button onClick={handleNewLicense} className="btn-primary">
                 Crear Licencia
               </button>
-            </div>
+            </motion.div>
           ) : (
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-luxury-gray">
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium">
-                    Clave de Licencia
-                  </th>
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium">
-                    Usuario
-                  </th>
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium">
-                    Plan
-                  </th>
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium">
-                    Límite de Mensajes
-                  </th>
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium">
-                    Usados
-                  </th>
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium">
-                    Estado
-                  </th>
-                  <th className="text-right py-3 px-4 text-gray-400 font-medium">
-                    Acciones
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {licenses.map((license) => (
-                  <tr
-                    key={license.id}
-                    className="border-b border-luxury-gray hover:bg-luxury-gray/50 transition-colors"
-                  >
-                    <td className="py-4 px-4">
-                      <code className="bg-luxury-gray px-2 py-1 rounded text-luxury-gold text-sm">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {licenses.map((license, index) => (
+                <motion.div
+                  key={license.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="card-luxury p-5 hover:shadow-glow-raspberry transition-all duration-300"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(51, 65, 85, 0.5) 100%)',
+                    borderColor: license.is_active ? 'rgba(228, 0, 59, 0.3)' : 'rgba(100, 100, 100, 0.3)'
+                  }}
+                >
+                  {/* Header con licencia key y estado */}
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <code className="text-xs font-mono font-bold text-luxury-raspberry block mb-1">
                         {license.license_key}
                       </code>
-                    </td>
-                    <td className="py-4 px-4 text-luxury-white">
-                      {license.profiles ? (
-                        <div>
-                          <p className="font-medium">{license.profiles.full_name}</p>
-                          <p className="text-xs text-gray-400">{license.profiles.email}</p>
-                        </div>
-                      ) : (
-                        <span className="text-gray-500">Sin asignar</span>
-                      )}
-                    </td>
-                    <td className="py-4 px-4">
-                      <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium border ${getPlanColor(license.plan_type)}`}>
+                      <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${getPlanColor(license.plan_type)}`}>
                         {planTypes.find(p => p.value === license.plan_type)?.label}
                       </span>
-                    </td>
-                    <td className="py-4 px-4 text-luxury-white">
-                      {license.message_limit.toLocaleString()}
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-luxury-white">
-                          {license.messages_used.toLocaleString()}
-                        </span>
-                        <div className="w-24 bg-luxury-gray rounded-full h-2">
-                          <div
-                            className="bg-luxury-gold h-2 rounded-full"
-                            style={{
-                              width: `${Math.min((license.messages_used / license.message_limit) * 100, 100)}%`
-                            }}
-                          />
-                        </div>
+                    </div>
+                    <span className={`inline-block px-2 py-1 rounded-lg text-[10px] font-bold ${
+                      license.is_active
+                        ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                        : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                    }`}>
+                      {license.is_active ? 'ACTIVA' : 'INACTIVA'}
+                    </span>
+                  </div>
+
+                  {/* Usuario */}
+                  <div className="mb-3 pb-3 border-b border-gray-700">
+                    {license.profiles ? (
+                      <div>
+                        <p className="text-sm font-bold text-white truncate">{license.profiles.full_name}</p>
+                        <p className="text-[10px] text-gray-400 truncate">{license.profiles.email}</p>
                       </div>
-                    </td>
-                    <td className="py-4 px-4">
-                      <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
-                        license.is_active
-                          ? 'bg-green-500/20 text-green-400'
-                          : 'bg-red-500/20 text-red-400'
-                      }`}>
-                        {license.is_active ? 'Activa' : 'Inactiva'}
+                    ) : (
+                      <span className="text-xs text-gray-500">Sin asignar</span>
+                    )}
+                  </div>
+
+                  {/* Usage bar */}
+                  <div className="mb-3">
+                    <div className="flex items-center justify-between text-[10px] mb-1">
+                      <span className="text-gray-400 font-medium">Mensajes</span>
+                      <span className="text-white font-bold">
+                        {license.messages_used.toLocaleString()} / {license.message_limit.toLocaleString()}
                       </span>
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="flex items-center justify-end space-x-2">
-                        <button
-                          onClick={() => handleEdit(license)}
-                          className="p-2 text-luxury-gold hover:bg-luxury-gold/10 rounded-lg transition-colors"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(license.id)}
-                          className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+                    <div className="w-full bg-gray-800 rounded-full h-1.5">
+                      <div
+                        className="h-1.5 rounded-full transition-all duration-500"
+                        style={{
+                          width: `${Math.min((license.messages_used / license.message_limit) * 100, 100)}%`,
+                          background: 'linear-gradient(90deg, #E4003B 0%, #FF1744 100%)'
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Acciones */}
+                  <div className="flex items-center justify-end space-x-2 pt-2">
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={() => handleEdit(license)}
+                      className="p-2 rounded-lg transition-all duration-200"
+                      style={{
+                        background: 'rgba(228, 0, 59, 0.1)',
+                        border: '1px solid rgba(228, 0, 59, 0.3)',
+                        color: '#E4003B'
+                      }}
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={() => handleDelete(license.id)}
+                      className="p-2 bg-red-500/10 text-red-400 border border-red-500/30 rounded-lg hover:bg-red-500/20 transition-all duration-200"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </motion.button>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
           )}
-        </motion.div>
+        </div>
       </div>
 
       {/* Modal */}

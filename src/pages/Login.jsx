@@ -105,7 +105,7 @@ export default function Login() {
                 alt="Logo"
                 className="w-80 h-auto object-contain"
                 style={{
-                  filter: 'drop-shadow(0 0 20px rgba(59, 130, 246, 0.4)) drop-shadow(0 0 40px rgba(6, 182, 212, 0.2))',
+                  filter: 'drop-shadow(0 0 20px rgba(228, 0, 59, 0.4)) drop-shadow(0 0 40px rgba(228, 0, 59, 0.2))',
                 }}
                 onError={(e) => {
                   e.target.style.display = 'none';
@@ -113,9 +113,9 @@ export default function Login() {
                 }}
               />
               <div
-                className="hidden items-center justify-center w-20 h-20 rounded-xl bg-gradient-to-br from-luxury-brightBlue to-luxury-cyan"
+                className="hidden items-center justify-center w-20 h-20 rounded-xl bg-gradient-to-br from-luxury-raspberry to-luxury-raspberryDark"
                 style={{
-                  filter: 'drop-shadow(0 0 20px rgba(59, 130, 246, 0.4))',
+                  filter: 'drop-shadow(0 0 20px rgba(228, 0, 59, 0.4))',
                 }}
               >
                 <Shield
@@ -138,7 +138,7 @@ export default function Login() {
         {/* Login Card */}
         <div className="relative">
           {/* Card subtle glow */}
-          <div className="absolute inset-0 bg-gradient-to-br from-luxury-brightBlue/10 via-transparent to-luxury-cyan/10 rounded-2xl blur-xl" />
+          <div className="absolute inset-0 bg-gradient-to-br from-luxury-raspberry/10 via-transparent to-luxury-raspberryDark/10 rounded-2xl blur-xl" />
 
           <div className="relative card-luxury border-luxury-brightBlue/20 backdrop-blur-xl bg-luxury-navyBlue/40 p-6">
             {error && (
@@ -157,12 +157,12 @@ export default function Login() {
                   Usuario
                 </label>
                 <div className="relative group">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-luxury-brightBlue/70 w-4 h-4 z-10 group-hover:text-luxury-brightBlue transition-colors" />
+                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-luxury-raspberry/70 w-4 h-4 z-10 group-hover:text-luxury-raspberry transition-colors" />
                   <input
                     type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    className="relative w-full pl-10 pr-4 py-2.5 bg-luxury-navyBlue/50 border border-luxury-brightBlue/20 rounded-lg text-luxury-white placeholder-gray-500 hover:border-luxury-brightBlue/40 focus:border-luxury-brightBlue focus:outline-none transition-all text-sm"
+                    className="relative w-full pl-10 pr-4 py-2.5 bg-white border border-luxury-raspberry/20 rounded-lg text-gray-900 placeholder-gray-400 hover:border-luxury-raspberry/40 focus:border-luxury-raspberry focus:outline-none transition-all text-sm"
                     placeholder="Usuario"
                     required
                     disabled={loading}
@@ -176,12 +176,12 @@ export default function Login() {
                   Contraseña
                 </label>
                 <div className="relative group">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-luxury-brightBlue/70 w-4 h-4 z-10 group-hover:text-luxury-brightBlue transition-colors" />
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-luxury-raspberry/70 w-4 h-4 z-10 group-hover:text-luxury-raspberry transition-colors" />
                   <input
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="relative w-full pl-10 pr-4 py-2.5 bg-luxury-navyBlue/50 border border-luxury-brightBlue/20 rounded-lg text-luxury-white placeholder-gray-500 hover:border-luxury-brightBlue/40 focus:border-luxury-brightBlue focus:outline-none transition-all text-sm"
+                    className="relative w-full pl-10 pr-4 py-2.5 bg-white border border-luxury-raspberry/20 rounded-lg text-gray-900 placeholder-gray-400 hover:border-luxury-raspberry/40 focus:border-luxury-raspberry focus:outline-none transition-all text-sm"
                     placeholder="••••••••"
                     required
                     disabled={loading}

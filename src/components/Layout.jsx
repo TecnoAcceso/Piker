@@ -185,12 +185,6 @@ export default function Layout({ children }) {
       show: true
     },
     {
-      name: 'Historial',
-      href: '/history',
-      icon: Package,
-      show: true
-    },
-    {
       name: 'Usuarios',
       href: '/users',
       icon: Users,
@@ -220,30 +214,41 @@ export default function Layout({ children }) {
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
             className="fixed lg:static inset-y-0 left-0 z-50 w-64 flex flex-col"
             style={{
-              background: 'linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.95) 100%)',
+              background: 'linear-gradient(180deg, #1a1f3d 0%, #252b4d 100%)',
               backdropFilter: 'blur(20px)',
-              borderRight: '1px solid rgba(59, 130, 246, 0.2)',
-              boxShadow: '0 0 40px rgba(59, 130, 246, 0.1)',
+              borderRight: '1px solid rgba(228, 0, 59, 0.3)',
+              boxShadow: '0 0 40px rgba(228, 0, 59, 0.2)',
             }}
           >
             {/* Logo */}
             <div className="h-20 flex items-center justify-between px-6 relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-luxury-brightBlue/5 to-transparent" />
-              <Link to="/dashboard" className="flex items-center space-x-3 relative z-10">
-                <motion.div
-                  className="relative w-12 h-12 rounded-xl flex items-center justify-center"
+              <Link to="/dashboard" className="flex items-center justify-center flex-1 relative z-10">
+                <motion.img
+                  src="/logo.png"
+                  alt="Piker Logo"
+                  className="h-16 w-auto object-contain"
                   style={{
-                    background: 'linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%)',
-                    boxShadow: '0 8px 24px rgba(59, 130, 246, 0.4), inset 0 0 20px rgba(255, 255, 255, 0.1)',
+                    filter: 'drop-shadow(0 0 10px rgba(255, 255, 255, 0.6))',
                   }}
-                  whileHover={{ scale: 1.05, rotate: 5 }}
+                  whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    e.target.nextElementSibling.style.display = 'flex';
+                  }}
+                />
+                <div
+                  className="hidden items-center justify-center relative z-10"
+                  style={{
+                    filter: 'drop-shadow(0 0 10px rgba(255, 255, 255, 0.6))',
+                  }}
                 >
-                  <Package className="w-7 h-7 text-white drop-shadow-lg" />
-                </motion.div>
-                <span className="text-3xl font-display font-bold gradient-text tracking-tight">
-                  Piker
-                </span>
+                  <Package
+                    className="w-10 h-10"
+                    style={{ color: '#E4003B' }}
+                    strokeWidth={2}
+                  />
+                </div>
               </Link>
               <motion.button
                 onClick={() => setSidebarOpen(false)}
@@ -278,19 +283,19 @@ export default function Layout({ children }) {
                         className="relative flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-300 group"
                         style={{
                           background: active
-                            ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(6, 182, 212, 0.1) 100%)'
+                            ? 'linear-gradient(135deg, rgba(228, 0, 59, 0.15) 0%, rgba(199, 0, 58, 0.1) 100%)'
                             : 'transparent',
                           borderWidth: '1px',
                           borderStyle: 'solid',
-                          borderColor: active ? 'rgba(59, 130, 246, 0.4)' : 'transparent',
-                          boxShadow: active ? '0 4px 16px rgba(59, 130, 246, 0.2)' : 'none'
+                          borderColor: active ? 'rgba(228, 0, 59, 0.4)' : 'transparent',
+                          boxShadow: active ? '0 4px 16px rgba(228, 0, 59, 0.3)' : 'none'
                         }}
                         whileHover={{ x: 4, scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                       >
                         {/* Hover glow effect */}
                         {!active && (
-                          <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-luxury-brightBlue/5 to-luxury-cyan/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                          <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-luxury-raspberry/5 to-luxury-raspberryDark/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                         )}
 
                         <div className="flex items-center space-x-3 relative z-10">
@@ -302,15 +307,15 @@ export default function Layout({ children }) {
                             <item.icon
                               className="w-5 h-5"
                               style={{
-                                color: active ? '#3b82f6' : '#94a3b8',
-                                filter: active ? 'drop-shadow(0 0 8px rgba(59, 130, 246, 0.6))' : 'none'
+                                color: active ? '#E4003B' : '#ffffff',
+                                filter: active ? 'drop-shadow(0 0 8px rgba(228, 0, 59, 0.6))' : 'none'
                               }}
                             />
                           </motion.div>
                           <span
                             className="font-semibold transition-colors duration-300"
                             style={{
-                              color: active ? '#3b82f6' : '#94a3b8'
+                              color: active ? '#E4003B' : '#ffffff'
                             }}
                           >
                             {item.name}
@@ -320,7 +325,7 @@ export default function Layout({ children }) {
                           <ChevronRight
                             className="w-4 h-4 transition-all duration-300 relative z-10"
                             style={{
-                              color: active ? '#3b82f6' : '#94a3b8',
+                              color: active ? '#E4003B' : '#ffffff',
                               transform: active ? 'rotate(90deg)' : 'rotate(0deg)'
                             }}
                           />
@@ -343,10 +348,10 @@ export default function Layout({ children }) {
                               <motion.div
                                 className="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200"
                                 style={{
-                                  background: subActive ? 'rgba(59, 130, 246, 0.15)' : 'transparent',
-                                  color: subActive ? '#60a5fa' : '#64748b'
+                                  background: subActive ? 'rgba(228, 0, 59, 0.15)' : 'transparent',
+                                  color: subActive ? '#E4003B' : '#ffffff'
                                 }}
-                                whileHover={{ x: 4, backgroundColor: 'rgba(59, 130, 246, 0.1)' }}
+                                whileHover={{ x: 4, backgroundColor: 'rgba(228, 0, 59, 0.1)' }}
                               >
                                 {subitem.name}
                               </motion.div>
@@ -361,13 +366,13 @@ export default function Layout({ children }) {
             </nav>
 
             {/* User Profile */}
-            <div className="p-4 border-t" style={{ borderColor: 'rgba(59, 130, 246, 0.2)' }}>
+            <div className="p-4 border-t" style={{ borderColor: 'rgba(228, 0, 59, 0.2)' }}>
               <motion.div
                 onClick={() => setProfileModalOpen(true)}
                 className="flex items-center space-x-3 mb-4 p-3 rounded-xl cursor-pointer relative"
                 style={{
-                  background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(6, 182, 212, 0.1) 100%)',
-                  border: '1px solid rgba(59, 130, 246, 0.2)'
+                  background: 'linear-gradient(135deg, rgba(228, 0, 59, 0.1) 0%, rgba(199, 0, 58, 0.1) 100%)',
+                  border: '1px solid rgba(228, 0, 59, 0.2)'
                 }}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
@@ -375,8 +380,8 @@ export default function Layout({ children }) {
                 <motion.div
                   className="w-12 h-12 rounded-xl flex items-center justify-center relative flex-shrink-0"
                   style={{
-                    background: 'linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%)',
-                    boxShadow: '0 4px 16px rgba(59, 130, 246, 0.4), inset 0 0 20px rgba(255, 255, 255, 0.2)'
+                    background: 'linear-gradient(135deg, #E4003B 0%, #C7003A 100%)',
+                    boxShadow: '0 4px 16px rgba(228, 0, 59, 0.4), inset 0 0 20px rgba(255, 255, 255, 0.2)'
                   }}
                   whileHover={{ rotate: [0, -10, 10, -10, 0] }}
                   transition={{ duration: 0.5 }}
@@ -420,13 +425,13 @@ export default function Layout({ children }) {
                       animate={{ opacity: [0.6, 1, 0.6] }}
                       transition={{ duration: 1.5, repeat: Infinity }}
                     >
-                      <Info className="w-3 h-3 text-luxury-brightBlue" />
+                      <Info className="w-3 h-3 text-luxury-raspberry" />
                     </motion.div>
                   </div>
-                  <p className="text-xs text-luxury-brightBlue font-medium capitalize">
+                  <p className="text-xs text-luxury-raspberry font-medium capitalize">
                     {profile?.role === 'system_admin' ? 'System Admin' : profile?.role}
                   </p>
-                  <p className="text-[10px] text-gray-500 mt-0.5 italic">
+                  <p className="text-[10px] text-gray-300 mt-0.5 italic">
                     Click para ver perfil
                   </p>
                 </div>
@@ -459,7 +464,7 @@ export default function Layout({ children }) {
           style={{
             background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.95) 100%)',
             backdropFilter: 'blur(20px)',
-            borderColor: 'rgba(59, 130, 246, 0.2)',
+            borderColor: 'rgba(228, 0, 59, 0.2)',
             boxShadow: '0 4px 24px rgba(0, 0, 0, 0.2)'
           }}
         >
@@ -468,20 +473,28 @@ export default function Layout({ children }) {
               onClick={() => setSidebarOpen(!sidebarOpen)}
               className="w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300 group"
               style={{
-                background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(6, 182, 212, 0.1) 100%)',
-                border: '1px solid rgba(59, 130, 246, 0.2)'
+                background: 'linear-gradient(135deg, rgba(228, 0, 59, 0.1) 0%, rgba(199, 0, 58, 0.1) 100%)',
+                border: '1px solid rgba(228, 0, 59, 0.2)'
               }}
               whileHover={{ scale: 1.05, rotate: 90 }}
               whileTap={{ scale: 0.95 }}
             >
               <Menu
                 className="w-5 h-5 transition-colors"
-                style={{ color: '#3b82f6' }}
+                style={{ color: '#ffffff' }}
               />
             </motion.button>
-            <h1 className="text-3xl font-display font-bold gradient-text tracking-tight">
-              Piker
-            </h1>
+            <motion.img
+              src="/palabra.png"
+              alt="Piker"
+              className="h-16 w-auto object-contain"
+              style={{
+                filter: 'drop-shadow(0 0 8px rgba(255, 255, 255, 0.6))',
+              }}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.1 }}
+            />
           </div>
 
           <motion.div
@@ -490,22 +503,9 @@ export default function Layout({ children }) {
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
           >
-            <p className="text-xs font-medium text-gray-400">
+            <p className="text-sm font-medium text-gray-300">
               Hola, <span className="text-luxury-white font-semibold">{profile?.full_name || 'Usuario'}</span>
             </p>
-            <motion.div
-              className="w-10 h-10 rounded-lg flex items-center justify-center"
-              style={{
-                background: 'linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%)',
-                boxShadow: '0 4px 16px rgba(59, 130, 246, 0.4), inset 0 0 20px rgba(255, 255, 255, 0.2)'
-              }}
-              whileHover={{ rotate: 360, scale: 1.1 }}
-              transition={{ duration: 0.6 }}
-            >
-              <span className="text-white font-bold drop-shadow-lg">
-                {profile?.full_name?.charAt(0).toUpperCase() || 'U'}
-              </span>
-            </motion.div>
           </motion.div>
         </header>
 
@@ -520,8 +520,8 @@ export default function Layout({ children }) {
           style={{
             background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.99) 0%, rgba(30, 41, 59, 0.99) 100%)',
             backdropFilter: 'blur(24px)',
-            borderTop: '1px solid rgba(251, 191, 36, 0.3)',
-            boxShadow: '0 -4px 24px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(251, 191, 36, 0.1)'
+            borderTop: '1px solid rgba(228, 0, 59, 0.3)',
+            boxShadow: '0 -4px 24px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(228, 0, 59, 0.1)'
           }}
         >
           <div className="flex items-center justify-between gap-2 md:gap-4 overflow-hidden">
@@ -530,23 +530,23 @@ export default function Layout({ children }) {
               {licenseStatus.loading ? (
                 <div className="flex items-center space-x-1.5">
                   <motion.div
-                    className="w-3 h-3 border-2 border-luxury-gold border-t-transparent rounded-full flex-shrink-0"
+                    className="w-3 h-3 border-2 border-luxury-raspberry border-t-transparent rounded-full flex-shrink-0"
                     animate={{ rotate: 360 }}
                     transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                   />
-                  <span className="text-[10px] md:text-xs text-gray-400 font-medium whitespace-nowrap">Verificando...</span>
+                  <span className="text-[10px] md:text-xs text-gray-300 font-medium whitespace-nowrap">Verificando...</span>
                 </div>
               ) : licenseStatus.hasLicense ? (
                 <>
                   {profile?.role === 'system_admin' ? (
                     <div className="flex items-center space-x-1.5 px-2 py-1 rounded-md"
                       style={{
-                        background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(245, 158, 11, 0.1) 100%)',
-                        border: '1px solid rgba(251, 191, 36, 0.3)'
+                        background: 'linear-gradient(135deg, rgba(228, 0, 59, 0.15) 0%, rgba(199, 0, 58, 0.1) 100%)',
+                        border: '1px solid rgba(228, 0, 59, 0.3)'
                       }}
                     >
-                      <Shield className="w-3 h-3 text-luxury-gold flex-shrink-0" />
-                      <span className="text-[10px] md:text-xs font-semibold text-luxury-gold whitespace-nowrap">System Admin</span>
+                      <Shield className="w-3 h-3 text-luxury-raspberry flex-shrink-0" />
+                      <span className="text-[10px] md:text-xs font-semibold text-luxury-raspberry whitespace-nowrap">System Admin</span>
                     </div>
                   ) : (
                     <div className="flex items-center space-x-1.5 px-2 py-1 rounded-md"
@@ -622,20 +622,20 @@ export default function Layout({ children }) {
             <div className="flex items-center space-x-2 md:space-x-3 flex-shrink-0">
               <div className="flex items-center space-x-1.5 px-2 py-1 rounded-md"
                 style={{
-                  background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.1) 0%, rgba(245, 158, 11, 0.05) 100%)',
-                  border: '1px solid rgba(251, 191, 36, 0.2)'
+                  background: 'linear-gradient(135deg, rgba(228, 0, 59, 0.1) 0%, rgba(199, 0, 58, 0.05) 100%)',
+                  border: '1px solid rgba(228, 0, 59, 0.2)'
                 }}
               >
-                <span className="text-sm md:text-base font-bold text-yellow-400" style={{ fontFamily: 'monospace' }}>&lt;/&gt;</span>
+                <span className="text-sm md:text-base font-bold text-luxury-raspberry" style={{ fontFamily: 'monospace' }}>&lt;/&gt;</span>
                 <div className="flex items-center space-x-1 md:space-x-1.5">
-                  <span className="text-[10px] md:text-xs font-bold text-yellow-400 whitespace-nowrap">ElectroShop</span>
-                  <span className="text-[10px] md:text-xs text-gray-500">/</span>
-                  <span className="text-[10px] md:text-xs font-bold text-orange-400 whitespace-nowrap">TecnoAcceso</span>
+                  <span className="text-[10px] md:text-xs font-bold text-luxury-raspberry whitespace-nowrap">ElectroShop</span>
+                  <span className="text-[10px] md:text-xs text-gray-400">/</span>
+                  <span className="text-[10px] md:text-xs font-bold text-luxury-raspberryLight whitespace-nowrap">TecnoAcceso</span>
                 </div>
               </div>
-              <div className="hidden md:flex items-center space-x-1.5 text-[10px] text-gray-500">
+              <div className="hidden md:flex items-center space-x-1.5 text-[10px] text-gray-400">
                 <span>© 2025</span>
-                <span className="text-luxury-gold font-semibold">Piker</span>
+                <span className="text-luxury-raspberry font-semibold">Piker</span>
               </div>
             </div>
           </div>

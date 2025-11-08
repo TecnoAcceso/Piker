@@ -28,7 +28,12 @@ export default {
           navyBlue: '#1e293b',      // Azul marino medio
           slateBlue: '#334155',     // Azul pizarra
 
-          // Azules brillantes para acentos
+          // Rojo frambuesa brillante para botones y acentos
+          raspberry: '#E4003B',     // Rojo frambuesa brillante (color principal MRW)
+          raspberryLight: '#FF1744', // Rojo frambuesa más claro
+          raspberryDark: '#C7003A',  // Rojo frambuesa oscuro para hover
+
+          // Azules brillantes para acentos secundarios
           brightBlue: '#3b82f6',    // Azul brillante principal
           skyBlue: '#60a5fa',       // Azul cielo
           lightBlue: '#93c5fd',     // Azul claro
@@ -59,13 +64,15 @@ export default {
         mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
       },
       boxShadow: {
+        'glow-raspberry': '0 0 20px rgba(228, 0, 59, 0.4), 0 0 40px rgba(228, 0, 59, 0.2)',
+        'glow-raspberry-lg': '0 0 30px rgba(228, 0, 59, 0.5), 0 0 60px rgba(228, 0, 59, 0.3)',
         'glow-blue': '0 0 20px rgba(59, 130, 246, 0.4), 0 0 40px rgba(59, 130, 246, 0.2)',
         'glow-blue-lg': '0 0 30px rgba(59, 130, 246, 0.5), 0 0 60px rgba(59, 130, 246, 0.3)',
         'glow-cyan': '0 0 20px rgba(6, 182, 212, 0.4), 0 0 40px rgba(6, 182, 212, 0.2)',
-        'premium': '0 10px 40px rgba(59, 130, 246, 0.15)',
-        'premium-hover': '0 20px 60px rgba(59, 130, 246, 0.3)',
-        'premium-lg': '0 25px 50px -12px rgba(59, 130, 246, 0.25)',
-        'inner-premium': 'inset 0 2px 4px 0 rgba(59, 130, 246, 0.1)',
+        'premium': '0 10px 40px rgba(228, 0, 59, 0.15)',
+        'premium-hover': '0 20px 60px rgba(228, 0, 59, 0.3)',
+        'premium-lg': '0 25px 50px -12px rgba(228, 0, 59, 0.25)',
+        'inner-premium': 'inset 0 2px 4px 0 rgba(228, 0, 59, 0.1)',
       },
       animation: {
         'fade-in': 'fadeIn 0.5s ease-in-out',

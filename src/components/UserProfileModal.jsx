@@ -139,14 +139,14 @@ export default function UserProfileModal({ isOpen, onClose }) {
             >
               {/* Header */}
               <div className="p-6 border-b border-luxury-lightGray/30 relative overflow-hidden flex-shrink-0">
-                <div className="absolute inset-0 bg-gradient-to-r from-luxury-brightBlue/10 via-luxury-cyan/5 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-r from-luxury-raspberry/10 via-luxury-raspberryDark/5 to-transparent" />
                 <div className="flex items-center justify-between relative z-10 gap-4">
                   <div className="flex items-center space-x-4 min-w-0 flex-1">
                     <motion.div
                       className="w-16 h-16 rounded-xl flex items-center justify-center relative flex-shrink-0"
                       style={{
-                        background: 'linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%)',
-                        boxShadow: '0 8px 24px rgba(59, 130, 246, 0.4), inset 0 0 20px rgba(255, 255, 255, 0.2)'
+                        background: 'linear-gradient(135deg, #E4003B 0%, #C7003A 100%)',
+                        boxShadow: '0 8px 24px rgba(228, 0, 59, 0.4), inset 0 0 20px rgba(255, 255, 255, 0.2)'
                       }}
                       whileHover={{ rotate: [0, -10, 10, -10, 0] }}
                       transition={{ duration: 0.5 }}
@@ -178,7 +178,7 @@ export default function UserProfileModal({ isOpen, onClose }) {
                 {/* Información del Usuario */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-heading font-semibold text-luxury-white flex items-center justify-center space-x-2">
-                    <User className="w-5 h-5 text-luxury-brightBlue" />
+                    <User className="w-5 h-5 text-luxury-raspberry" />
                     <span>Información del Usuario</span>
                   </h3>
                   <div className="grid grid-cols-2 gap-3">
@@ -220,7 +220,7 @@ export default function UserProfileModal({ isOpen, onClose }) {
                 {/* Información de Licencia */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-heading font-semibold text-luxury-white flex items-center justify-center space-x-2">
-                    <Key className="w-5 h-5 text-luxury-gold" />
+                    <Key className="w-5 h-5 text-luxury-raspberry" />
                     <span>Información de Licencia</span>
                   </h3>
                   {licenseStatus.loading ? (

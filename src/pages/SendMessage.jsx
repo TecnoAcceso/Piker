@@ -811,15 +811,15 @@ export default function SendMessage() {
             <div className="relative template-dropdown">
               <button
                 onClick={() => setShowTemplateDropdown(!showTemplateDropdown)}
-                className="flex items-center space-x-1.5 px-2.5 py-1.5 bg-luxury-gray border border-luxury-lightGray rounded-lg text-luxury-white hover:border-luxury-gold/50 transition-all duration-200 group"
+                className="btn-secondary flex items-center space-x-2 px-4 py-2 text-sm"
                 title="Seleccionar plantilla"
               >
-                <FileText className="w-4 h-4 text-luxury-brightBlue group-hover:text-luxury-cyan transition-colors flex-shrink-0" />
-                <span className="text-sm font-medium text-luxury-white whitespace-nowrap">
-                  {selectedTemplate?.template_name || 'Seleccionar'}
+                <FileText className="w-4 h-4 flex-shrink-0" />
+                <span className="font-medium whitespace-nowrap">
+                  {selectedTemplate?.template_name || 'Seleccionar Plantilla'}
                 </span>
-                <ChevronDown 
-                  className={`w-3 h-3 text-gray-400 transition-transform duration-200 flex-shrink-0 ${showTemplateDropdown ? 'rotate-180' : ''}`}
+                <ChevronDown
+                  className={`w-3 h-3 transition-transform duration-200 flex-shrink-0 ${showTemplateDropdown ? 'rotate-180' : ''}`}
                 />
               </button>
 
@@ -830,7 +830,12 @@ export default function SendMessage() {
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
-                    className="absolute right-0 z-10 w-64 mt-2 bg-luxury-darkGray border border-luxury-lightGray rounded-lg shadow-xl overflow-hidden template-dropdown"
+                    className="absolute right-0 z-10 w-64 mt-2 border border-luxury-raspberry/30 rounded-lg shadow-xl overflow-hidden template-dropdown"
+                    style={{
+                      background: 'linear-gradient(180deg, #1a1f3d 0%, #252b4d 100%)',
+                      backdropFilter: 'blur(20px)',
+                      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(228, 0, 59, 0.1) inset'
+                    }}
                   >
                     {templates.map((template) => (
                       <button
@@ -842,8 +847,8 @@ export default function SendMessage() {
                         }}
                         className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
                           selectedTemplate?.id === template.id
-                            ? 'bg-luxury-gold/20 text-luxury-gold border-l border-r border-luxury-gold/30'
-                            : 'text-gray-300 hover:bg-luxury-gray hover:text-luxury-white'
+                            ? 'bg-luxury-raspberry/20 text-luxury-raspberry border-l-2 border-luxury-raspberry'
+                            : 'text-white hover:bg-luxury-raspberry/10 hover:text-luxury-raspberry'
                         }`}
                       >
                         {template.template_name}
